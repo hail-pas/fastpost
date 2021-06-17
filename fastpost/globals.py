@@ -65,7 +65,6 @@ class GlobalsMiddleware:
         g.reset()
         g.initialize()
         await self.app(scope, receive, send)
-        g.reset()
 
 
 g = Globals()
