@@ -1,14 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from tests import main_app
+from fastpost.factory import current_app
 
-client = TestClient(main_app)
+client = TestClient(current_app)
 
 
 @pytest.mark.parametrize(
     "method, path, headers, params, body, expected_code",
-    [("post", "api/user/address", {"Authorization": "Bearer askhfskjhgasoruyhgeiohgdlhgj"}, None, None, 100200,)],
+    [("post", "api/user/address", {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxfQ.v1zQUnB4-WXrjFV6MbsKxv6JFm7_KrLbll695qEPcTg"},
+      None, None, 100200,)],
 )
 def test_above(method, path, headers, params, body, expected_code):
     response = getattr(client, method)(path, headers=headers, params=params, json=body)
