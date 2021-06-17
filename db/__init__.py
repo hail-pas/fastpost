@@ -39,7 +39,7 @@ class PydanticCreateMeta(DeclarativeMeta, abc.ABCMeta):
     PyModel = TypeVar('PyModel', bound='BaseModel')
 
     @property
-    def pydantic_model(cls) -> Type['PyModel']:
+    def response_model(cls) -> Type['PyModel']:
         """
         自动生成 pydantic_model 用于数据序列化
         class Config:
