@@ -1,9 +1,9 @@
 import logging
-from typing import Generic, TypeVar, Optional
+from typing import Generic, TypeVar, Optional, List
 from datetime import datetime
 
 import ujson
-from pydantic import typing, validator
+from pydantic import typing, validator, BaseModel
 from pydantic.generics import GenericModel
 from starlette.responses import JSONResponse
 
@@ -11,6 +11,7 @@ from common.utils import COMMON_TIME_STRING
 from common.encrypt import AESUtil
 from fastpost.settings import get_settings
 from fastpost.resp_code import ResponseCodeEnum
+from fastpost.types import Pager
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +64,23 @@ class SimpleSuccess(Resp):
     """
     简单响应成功
     """
+
+
+class PageInfo(BaseModel):
+    """
+    翻页相关信息
+    """
+    total_page: int
+    total_count: int
+    size: int
+    page: int
+
+
+class PageResp(Resp, Generic[DataT]):
+    page: PageInfo
+    data: Optional[List[DataT]] = None
+
+
+def generate_page_info(total_count, pager: Pager):
+    return PageInfo(total_page=total_count // pager.limit, total_count=total_count, size=pager.limit,
+                    page=pager.offset // pager.limit + 1)

@@ -12,7 +12,7 @@ from starlette.requests import Request
 from starlette.exceptions import HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
 
-from apps.types import Pager
+from fastpost.types import Pager
 from common.encrypt import Jwt, SignAuth
 from db import db
 from db.models import User
