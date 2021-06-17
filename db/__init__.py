@@ -9,7 +9,8 @@ from fastpost.settings import get_settings
 
 def create_engine():
     return create_async_engine(
-        get_settings().POSTGRES_DATABASE_URL_ASYNC, echo=True, pool_timeout=30, pool_pre_ping=True, future=True,
+        get_settings().POSTGRES_DATABASE_URL_ASYNC, echo=get_settings().DEBUG, pool_timeout=30, pool_pre_ping=True,
+        future=True,
     )
 
 
