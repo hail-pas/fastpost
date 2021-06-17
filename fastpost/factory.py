@@ -96,8 +96,6 @@ def init_apps(main_app: FastAPI):
     async def init() -> None:
         # 初始化redis
         await AsyncRedisUtil.init()
-        g.session = db.session
-        g.engine = db.engine
 
     @main_app.on_event("shutdown")
     async def close() -> None:
@@ -116,6 +114,7 @@ def create_app(settings: Settings):
         default_response_class=AesResponse,
         docs_url="/api/docs" if settings.DEBUG else None,
         redoc_url="/api/redoc",
+        version="0.1.0"
     )
     # thread local just flask like g
     main_app.add_middleware(GlobalsMiddleware)
