@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from contextvars import ContextVar, Token
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
@@ -28,6 +28,30 @@ class Globals:
         for item, value in PreGlobals.items():
             self._ensure_var(item)
             self._vars[item].set(value)
+
+    def session(self) -> Optional[AsyncSession]:
+        self._ensure_var("session")
+        try:
+            return self._vars["session"].get()
+        except LookupError:
+            self._vars["session"].set(None)
+            return None
+
+    def engine(self) -> Optional[AsyncEngine]:
+        self._ensure_var("engine")
+        try:
+            return self._vars["engine"].get()
+        except LookupError:
+            self._vars["engine"].set(None)
+            return None
+
+    def redis(self) -> Optional[AsyncRedisUtil]:
+        self._ensure_var("redis")
+        try:
+            return self._vars["redis"].get()
+        except LookupError:
+            self._vars["redis"].set(None)
+            return None
 
     def reset(self) -> None:
         for _name, var in self._vars.items():
