@@ -77,7 +77,7 @@ class PageInfo(BaseModel):
 
 
 class PageResp(Resp, Generic[DataT]):
-    page: PageInfo
+    page_info: PageInfo
     data: Optional[List[DataT]] = None
 
 

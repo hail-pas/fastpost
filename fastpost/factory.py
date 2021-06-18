@@ -45,7 +45,7 @@ def setup_exception_handlers(main_app: FastAPI):
 
 def setup_middleware(main_app: FastAPI):
     """
-    ./middlewares 里定义中间件
+    ./middlewares 文件中的定义中间件
     :param main_app:
     :return:
     """
