@@ -70,7 +70,7 @@ async def jwt_required(request: Request, token: HTTPAuthorizationCredentials = D
     except jwt.JWTError:
         raise TokenInvalidException()
     # 初始化全局用户信息，后续处理函数中直接使用
-    user = (await db.session.execute(select(User).filter(User.id == user_id))).scalars().first()
+    user = await db.session.get(User, user_id)
     if not user:
         raise TokenInvalidException()
     g.user = user
