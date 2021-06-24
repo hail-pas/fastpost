@@ -1,5 +1,7 @@
+import multiprocessing
+import os
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from functools import lru_cache
 
 from pydantic import EmailStr, BaseSettings, validator
@@ -11,7 +13,7 @@ class Settings(BaseSettings):
     # ProjectInfo
     PROJECT_NAME: str = "FastPost"
     SERVER_URL: str = "http:127.0.0.1:8000"
-    DESCRIPTION: str = "Fastapi-start-kit with Postgre"
+    DESCRIPTION: str = "Fastapi-start-kit with Postgre and sqlalchemy"
     ENVIRONMENT: str = "Development"  # Test、 Production
     DEBUG: bool = True
 
@@ -21,6 +23,9 @@ class Settings(BaseSettings):
 
     # SentryDsn
     SENTRY_DSN: Optional[str]
+
+    # gunicorn
+    WORKERS: int = multiprocessing.cpu_count() * int(os.getenv("WORKERS_PER_CORE", "2")) + 1
 
     @validator("SENTRY_DSN", pre=True)
     def sentry_dsn_can_be_blank(cls, v: str) -> Optional[str]:
@@ -72,6 +77,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str]
     EMAILS_FROM_EMAIL: Optional[EmailStr]
     EMAILS_FROM_NAME: Optional[str]
+
+    # IP WhiteList
+    ALLOWED_HOST_LIST: List[str] = []
 
     @validator("EMAILS_FROM_NAME")
     def get_project_name(cls, v: Optional[str], values: Dict[str, Any]) -> str:

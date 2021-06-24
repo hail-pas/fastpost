@@ -1,17 +1,17 @@
 import time
-from typing import Optional
+from typing import Optional, Generator
 from urllib.parse import unquote
 
 from jose import jwt
 from fastapi import Query, Header, Depends
 from pydantic import PositiveInt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.future import select
-from starlette.status import HTTP_406_NOT_ACCEPTABLE
+from starlette.status import HTTP_406_NOT_ACCEPTABLE, HTTP_403_FORBIDDEN
 from starlette.requests import Request
 from starlette.exceptions import HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
 
+from common.utils import get_client_ip
 from fastpost.types import Pager
 from common.encrypt import Jwt, SignAuth
 from db import db
@@ -70,7 +70,7 @@ async def jwt_required(request: Request, token: HTTPAuthorizationCredentials = D
     except jwt.JWTError:
         raise TokenInvalidException()
     # 初始化全局用户信息，后续处理函数中直接使用
-    user = await db.session.get(User, user_id)
+    user = await User.get(user_id)
     if not user:
         raise TokenInvalidException()
     g.user = user
@@ -97,3 +97,18 @@ async def sign_check(
             raise TimeStampExpiredException()
         if not x_signature or not SignAuth(settings.SIGN_SECRET).verify(x_signature, sign_str):
             raise SignCheckFailedException()
+
+
+async def host_checker(request: Request, ):
+    if "*" in settings.ALLOWED_HOST_LIST:
+        return
+    caller_host = get_client_ip(request)
+    if "." in caller_host:
+        host_segments = caller_host.strip().split(".")
+        if len(host_segments) == 4:
+            blur_segments = ["*", "*", "*", "*"]
+            for i in range(4):
+                blur_segments[i] = host_segments[i]
+                if ".".join(blur_segments) in settings.ALLOWED_HOST_LIST:
+                    return
+    raise HTTPException(HTTP_403_FORBIDDEN, f"IP {caller_host} 不在访问白名单")

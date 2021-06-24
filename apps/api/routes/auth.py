@@ -1,19 +1,15 @@
 from datetime import timedelta, datetime
 from typing import Any
-
 from fastapi import Body, APIRouter, Depends
 from pydantic import BaseModel
 from pydantic.errors import MissingError
-from sqlalchemy import or_, select
-from sqlalchemy.orm import joinedload
-
-from apps.depends import jwt_required
+from sqlalchemy import or_
+from apps.dependencies import jwt_required
 from common.encrypt import Jwt
-from db import db
 from db.models import User
 from fastpost.exceptions import NotFoundException
 from fastpost.globals import g
-from fastpost.response import Resp
+from fastpost.response import Resp, SimpleSuccess
 from fastpost.settings import get_settings
 
 router = APIRouter(prefix="/auth")
@@ -59,10 +55,11 @@ class AuthData(BaseModel):
 
 @router.post("/login", summary="登录", description="登录接口", response_model=Resp[AuthData])
 async def login(login_data: LoginSchema):
-    user = (await db.session.execute(select(User).options(joinedload(User.addresses)).filter(
-        or_(User.username == login_data.username, User.phone == login_data.phone)))).scalars().first()
+    user = await User.filter(or_(User.username == login_data.username, User.phone == login_data.phone)).first()
     if not user:
         raise NotFoundException("用户不存在")
+    user.last_login_at = datetime.now()
+    await user.save(update_fields=["last_login_at"])
     expired_at = datetime.now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
@@ -84,3 +81,21 @@ async def refresh_token():
         "expired_at": expired_at
     }
     return Resp[AuthData](data=data)
+
+
+@router.post("/logout", summary="登出", description="退出登录接口", response_model=SimpleSuccess,
+             dependencies=[Depends(jwt_required)])
+async def logout():
+    return
+
+
+class RegisterIn(BaseModel):
+    phone: str = Body(None, description="手机号", example="18888888888")
+    username: str = Body(None, description="用户名", example="phoenix")
+    password: str = Body(..., description="密码")
+
+
+@router.post("/register", summary="用户注册", description="新用户注册接口", response_model=Resp[User.response_model])
+async def register(register_in: RegisterIn):
+    user = await User.create()
+    return Resp[User.response_model](data=user)

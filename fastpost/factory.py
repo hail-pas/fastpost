@@ -102,7 +102,6 @@ def init_apps(main_app: FastAPI):
         # 关闭redis
         await AsyncRedisUtil.close()
         # 关闭数据库
-        await db.session.close_all()
         await db.engine.dispose()
 
 
@@ -112,8 +111,8 @@ def create_app(settings: Settings):
         title=settings.PROJECT_NAME,
         description=settings.DESCRIPTION,
         default_response_class=AesResponse,
-        docs_url="/api/docs" if settings.DEBUG else None,
-        redoc_url="/api/redoc",
+        docs_url="/docs" if settings.DEBUG else None,
+        redoc_url="/redoc",
         version="0.1.0"
     )
     # thread local just flask like g

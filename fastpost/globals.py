@@ -1,17 +1,7 @@
 from typing import Any, Dict, Optional
 from contextvars import ContextVar, Token
-
-from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 from starlette.types import Send, Scope, ASGIApp, Receive
-
 from common.redis import AsyncRedisUtil
-from db import db
-
-PreGlobals = {
-    "redis": AsyncRedisUtil,
-    "session": db.session,  # type: AsyncSession
-    "engine": db.engine  # type: AsyncEngine
-}
 
 
 class Globals:
@@ -25,26 +15,34 @@ class Globals:
         object.__setattr__(self, '_reset_tokens', {})
 
     def initialize(self):
-        for item, value in PreGlobals.items():
+        pre_globals = {
+            "redis": AsyncRedisUtil,
+            # "session": await db.session.__anext__(),  # type: AsyncSession
+            # "engine": db.engine  # type: AsyncEngine
+        }
+        for item, value in pre_globals.items():
             self._ensure_var(item)
             self._vars[item].set(value)
 
-    def session(self) -> Optional[AsyncSession]:
-        self._ensure_var("session")
-        try:
-            return self._vars["session"].get()
-        except LookupError:
-            self._vars["session"].set(None)
-            return None
+    # @property
+    # def session(self) -> Optional[AsyncSession]:
+    #     self._ensure_var("session")
+    #     try:
+    #         return self._vars["session"].get()
+    #     except LookupError:
+    #         self._vars["session"].set(None)
+    #         return None
+    #
+    # @property
+    # def engine(self) -> Optional[AsyncEngine]:
+    #     self._ensure_var("engine")
+    #     try:
+    #         return self._vars["engine"].get()
+    #     except LookupError:
+    #         self._vars["engine"].set(None)
+    #         return None
 
-    def engine(self) -> Optional[AsyncEngine]:
-        self._ensure_var("engine")
-        try:
-            return self._vars["engine"].get()
-        except LookupError:
-            self._vars["engine"].set(None)
-            return None
-
+    @property
     def redis(self) -> Optional[AsyncRedisUtil]:
         self._ensure_var("redis")
         try:

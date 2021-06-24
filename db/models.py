@@ -1,9 +1,7 @@
 from datetime import datetime
-
 from sqlalchemy import Column, String, DateTime, func, ForeignKey, Integer
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship, backref
-
+from sqlalchemy.orm import relationship
 from db import BaseModel
 
 
@@ -51,6 +49,12 @@ class Address(BaseModel):
     user_id = Column(Integer, ForeignKey("user.id"), comment="用户id")
 
     user = relationship("User", back_populates="addresses")
+
+    def user_name(self):
+        return self.user.username
+
+    class Config:
+        additional = ("user_name",)
 
 
 class Profile(BaseModel):

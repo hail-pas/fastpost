@@ -64,7 +64,7 @@ class RSAUtil:
         cipher = PKCS1_v1_5.new(key)
         res = []
         for i in range(0, len(text), length):
-            text_item = text[i : i + length]
+            text_item = text[i: i + length]
             cipher_text = cipher.encrypt(text_item.encode(encoding="utf-8"))
             res.append(cipher_text)
         return base64.b64encode(b"".join(res)).decode()
@@ -77,7 +77,7 @@ class RSAUtil:
         cipher = PKCS1_v1_5.new(key)
         return cipher.decrypt(base64.b64decode(text), Random.new().read(15 + SHA.digest_size)).decode()
 
-    def _get_private_key(self,):
+    def _get_private_key(self, ):
         """
         从pfx文件读取私钥
         """
@@ -99,6 +99,31 @@ class RSAUtil:
         """
         key = OpenSSL.crypto.load_certificate(FILETYPE_PEM, self.pub_key)
         return OpenSSL.crypto.verify(key, base64.b64decode(sign), data.encode(), "sha256")
+
+
+class HashUtil:
+    @staticmethod
+    def md5_encode(s: str) -> str:
+        """
+        md5加密, 16进制
+        """
+        m = hashlib.md5(s.encode(encoding="utf-8"))
+        return m.hexdigest()
+
+    @staticmethod
+    def hmac_sha256_encode(k: str, s: str) -> str:
+        """
+        hmac sha256加密, 16进制
+        """
+        return hmac.digest(k.encode(), s.encode(), hashlib.sha256().name).hex()
+
+    @staticmethod
+    def sha1_encode(s: str) -> str:
+        """
+        sha1加密, 16进制
+        """
+        m = hashlib.sha1(s.encode(encoding="utf-8"))
+        return m.hexdigest()
 
 
 class HashUtilB64:
@@ -135,7 +160,7 @@ class SignAuth:
         self.private_key = private_key
 
     def verify(
-        self, sign: str, data_str: str,
+            self, sign: str, data_str: str,
     ):
         """
         校验sign
@@ -150,7 +175,7 @@ class SignAuth:
         return HashUtilB64.hmac_sha256_encode_b64(self.private_key, data_str)
 
 
-class Password:
+class PasswordUtil:
     """
     密码工具
     """
@@ -162,8 +187,8 @@ class Password:
         return cls.pwd_context.verify(plain_password, hashed_password)
 
     @classmethod
-    def get_password_hash(cls, password):
-        return cls.pwd_context.hash(password)
+    def get_password_hash(cls, plain_password):
+        return cls.pwd_context.hash(plain_password)
 
 
 class Jwt:

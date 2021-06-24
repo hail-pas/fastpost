@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 
 from pydantic import EmailStr
 from aiosmtplib import SMTP
+from starlette.requests import Request
 
 from fastpost.settings import get_settings
 
@@ -41,18 +42,18 @@ async def send_mail(to_mails: Sequence[EmailStr], text: str, subject: str, email
     message["From"] = settings.EMAILS_FROM_EMAIL
     message["Subject"] = subject
     async with client:
-        ret = await client.send_message(message, recipients=to_mails,)
+        ret = await client.send_message(message, recipients=to_mails, )
     return ret
 
 
 def join_params(
-    params: dict,
-    key: str = None,
-    filter_none: bool = True,
-    exclude_keys: List = None,
-    sep: str = "&",
-    reverse: bool = False,
-    key_alias: str = "key",
+        params: dict,
+        key: str = None,
+        filter_none: bool = True,
+        exclude_keys: List = None,
+        sep: str = "&",
+        reverse: bool = False,
+        key_alias: str = "key",
 ):
     """
     字典排序拼接参数
@@ -86,3 +87,15 @@ def generate_random_string(length: int, all_digits: bool = False, excludes: List
         for char in excludes:
             all_char.replace(char, "")
     return "".join(random.sample(all_char, length))
+
+
+def get_client_ip(request: Request):
+    """
+    获取客户端真实ip
+    :param request:
+    :return:
+    """
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0]
+    return request.client.host

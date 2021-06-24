@@ -7,5 +7,5 @@ from apps.spi import spi_app
 
 roster: List[List[Union[FastAPI, str]]] = [
     [spi_app, "/ws", "Socket IO"],
-    [api_router, "/api", "API"],
+    [api_router, "", "API"],
 ]
