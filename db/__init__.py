@@ -206,7 +206,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                     getattr(db.get_model_by_table_name(relation.secondary),
                             relation.secondaryjoin.right.key) == self.to_dict().get(
                         relation.secondaryjoin.left.key)).all()
-        elif item in [f"{relation.key}_filter" for relation in inspect(type(self)).relationships]:
+        elif item in [f"{relation.key}_proxy" for relation in inspect(type(self)).relationships]:
             relation = getattr(inspect(type(self)).attrs, item)
             return RelationObjectFilter(type(self), relation.mapper.class_, **{
                 f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)})
