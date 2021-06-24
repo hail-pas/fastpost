@@ -1,12 +1,10 @@
 import abc
-import logging
 import re
-import time
 from asyncio import current_task
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional, Any, Type, TypeVar, List, Union
-from sqlalchemy import update, event
+from sqlalchemy import update
 
 import sqlalchemy
 from pydantic import create_model, BaseConfig
@@ -15,6 +13,7 @@ from sqlalchemy.orm import sessionmaker, declared_attr, declarative_base, Declar
     RelationshipProperty, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_scoped_session
 from sqlalchemy.ext.asyncio.result import AsyncScalarResult
+from sqlalchemy.orm.clsregistry import _ModuleMarker
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql import ClauseElement
 
@@ -64,6 +63,13 @@ class SQLAlchemy:
             yield db_session  # type: AsyncSession
         finally:
             await db_session.close()
+
+    def get_model_by_table_name(self, table):
+        for c in self.Model.registry._class_registry.values():
+            if isinstance(c, _ModuleMarker):
+                continue
+            if inspect(c).local_table == table:
+                return c
 
 
 db = SQLAlchemy()
@@ -179,6 +185,38 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
 
     __abstract__ = True
 
+    def __getattribute__(self, item):
+        if item in [relation.key for relation in inspect(type(self)).relationships]:
+            relation = getattr(inspect(type(self)).attrs, item)
+            if not relation.uselist:
+                return RelationObjectFilter(type(self), relation.mapper.class_, **{
+                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).first()
+            if relation.direction.name == "ONETOMANY":
+                return RelationObjectFilter(type(self), relation.mapper.class_, **{
+                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).all()
+            if relation.direction.name == "MANYTOONE":
+                return RelationObjectFilter(type(self), relation.mapper.class_, **{
+                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).all()
+            if relation.direction.name == "MANYTOMANY":
+                return RelationObjectFilter(type(self), relation.mapper.class_).join(
+                    db.get_model_by_table_name(relation.secondary),
+                    getattr(relation.mapper.class_, relation.secondaryjoin.left.key) == getattr(
+                        db.get_model_by_table_name(relation.secondary),
+                        relation.secondaryjoin.right.key)).filter(
+                    getattr(db.get_model_by_table_name(relation.secondary),
+                            relation.secondaryjoin.right.key) == self.to_dict().get(
+                        relation.secondaryjoin.left.key)).all()
+        elif item in [f"{relation.key}_filter" for relation in inspect(type(self)).relationships]:
+            relation = getattr(inspect(type(self)).attrs, item)
+            return RelationObjectFilter(type(self), relation.mapper.class_, **{
+                f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)})
+        return super().__getattribute__(item)
+
+    def __setattr__(self, key, value):
+        if key in [relation.key for relation in inspect(type(self)).relationships]:
+            raise Exception("Relationship set require add function of RelationObject")
+        super(BaseModel, self).__setattr__(key, value)
+
     def to_dict(self):
         model_dict = dict(self.__dict__)
         del model_dict["_sa_instance_state"]
@@ -206,7 +244,11 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
             self_dict = self.to_dict()
             for key in update_fields:
                 if key not in self_dict.keys():
-                    raise Exception(f"Field {key} doesn't exist")
+                    if key in [f"{relation.key}_filter" for relation in inspect(type(self)).relationships]:
+                        # relationship_fields.append(key)
+                        pass
+                    else:
+                        raise Exception(f"Field {key} doesn't exist")
                 v = self_dict.get(key)
                 kwargs[key] = v
         async with db.session_ctx() as session:
@@ -268,6 +310,10 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
     @classmethod
     def filter(cls, *args, **kwargs) -> "Filter":
         return Filter(cls, *args, **kwargs)
+
+    @classmethod
+    async def first(cls, *args, **kwargs):
+        return await Filter(cls, *args, **kwargs).first()
 
     @classmethod
     def join(cls, join_target: Union["BaseModel", AliasedClass], on):
@@ -338,8 +384,8 @@ class Filter:
                                                                                                      "+")).desc() for
             order_field in getattr(model_cls.Config, "order_by", [])]
         self.select_args = [model_cls]
-        self.limit = None
-        self.offset = None
+        self.limit_ = None
+        self.offset_ = None
         self.group_fields = None
         self.join_param = []  # [(table, on), ]
         self.having_param = None
@@ -422,24 +468,32 @@ class Filter:
         self.select_args = set([self.get_attr_of_related_models(attr, related_models) for attr in args])
         return self
 
+    def limit(self, limit: int) -> "Filter":
+        self.limit_ = limit
+        return self
+
+    def offset(self, offset: int) -> "Filter":
+        self.offset_ = offset
+        return self
+
     async def result(self) -> AsyncScalarResult:
+        stmt = select(*self.select_args).filter(*self.filter_args, *self.filter_kwargs)
+        for table_model, on in self.join_param:
+            if on:
+                stmt = stmt.join(table_model, on)
+            else:
+                stmt = stmt.join(table_model)
+        if self.group_fields:
+            stmt = stmt.group_by(*self.group_fields)
+        if self.having_param:
+            stmt = stmt.having(*self.having_param)
+        if self.order_by_args:
+            stmt = stmt.order_by(*self.order_by_args)
+        if self.limit_:
+            stmt = stmt.limit_(self.limit_)
+        if self.offset_:
+            stmt = stmt.offset_(self.offset_)
         async with db.session_ctx() as session:
-            stmt = select(*self.select_args).filter(*self.filter_args, *self.filter_kwargs)
-            for table_model, on in self.join_param:
-                if on:
-                    stmt = stmt.join(table_model.__tablename__, on)
-                else:
-                    stmt = stmt.join(table_model.__tablename__)
-            if self.group_fields:
-                stmt = stmt.group_by(*self.group_fields)
-            if self.having_param:
-                stmt = stmt.having(*self.having_param)
-            if self.order_by_args:
-                stmt = stmt.order_by(*self.order_by_args)
-            if self.limit:
-                stmt = stmt.limit(self.limit)
-            if self.offset:
-                stmt = stmt.offset(self.offset)
             results = (await session.execute(stmt)).scalars()
         return results
 
@@ -452,3 +506,25 @@ class Filter:
     async def last(self):
         self.order_by_args = self.reverse_order_by_args
         return (await self.result()).first()
+
+
+class RelationObjectFilter(Filter):
+    added_objects = []
+
+    def __init__(self, parent_model_cls, model_cls, *args, **kwargs):
+        if model_cls not in [relation.mapper.class_ for relation in inspect(parent_model_cls).relationships]:
+            raise Exception(f"{model_cls} is not a relation object to {parent_model_cls}")
+        self.parent_model = parent_model_cls
+        super().__init__(model_cls, *args, **kwargs)
+
+    def add(self, *args):
+        assert all(isinstance(arg, self.query_model) for arg in args), f"Require instance of {self.query_model}"
+        self.added_objects.extend(args)
+
+    def join(self, join_target: Union["BaseModel", AliasedClass], on):
+        if isinstance(join_target, AliasedClass):
+            self.join_models.add(inspect(join_target).class_)
+        else:
+            self.join_models.add(join_target)
+        self.join_param.append((join_target, on))
+        return self

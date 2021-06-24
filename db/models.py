@@ -13,6 +13,11 @@ class User(BaseModel):
     last_login_at = Column(comment="最近登录时间", type_=DateTime)
     remark = Column(comment="备注", type_=String(200), default="")
 
+    # 自关联
+    # parent_id = Column(Integer, ForeignKey('user.id'), comment="父级ID")
+    # parent = relationship('User', back_populates="children", remote_side=[id])
+    # children = relationship("User", back_populates="parent", remote_side=[parent_id])
+
     addresses = relationship(
         "Address", back_populates="user", cascade="all, delete, delete-orphan"
     )
@@ -74,7 +79,7 @@ class Group(BaseModel):
     users = relationship("User", secondary="group_user", back_populates="groups")
 
     def __repr__(self):
-        return self.name
+        return self.label
 
 
 class Permission(BaseModel):

@@ -55,11 +55,15 @@ class AuthData(BaseModel):
 
 @router.post("/login", summary="登录", description="登录接口", response_model=Resp[AuthData])
 async def login(login_data: LoginSchema):
-    user = await User.filter(or_(User.username == login_data.username, User.phone == login_data.phone)).first()
+    user = await User.filter(
+        or_(User.username == login_data.username, User.phone == login_data.phone)).first()  # type: User
     if not user:
         raise NotFoundException("用户不存在")
     user.last_login_at = datetime.now()
     await user.save(update_fields=["last_login_at"])
+    print(await user.addresses)
+    print(await user.profile)
+    print(await user.groups)
     expired_at = datetime.now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
