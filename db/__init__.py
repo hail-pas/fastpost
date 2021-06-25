@@ -1,14 +1,12 @@
 import abc
 import re
+import sqlalchemy
 from asyncio import current_task
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional, Any, Type, TypeVar, List, Union
-from sqlalchemy import update
-
-import sqlalchemy
 from pydantic import create_model, BaseConfig
-from sqlalchemy import func, inspect, select
+from sqlalchemy import func, inspect, select, update, insert, delete
 from sqlalchemy.orm import sessionmaker, declared_attr, declarative_base, DeclarativeMeta, ColumnProperty, \
     RelationshipProperty, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_scoped_session
@@ -16,7 +14,7 @@ from sqlalchemy.ext.asyncio.result import AsyncScalarResult
 from sqlalchemy.orm.clsregistry import _ModuleMarker
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql import ClauseElement
-
+from sqlalchemy.sql.operators import is_
 from fastpost.response import generate_page_info
 from fastpost.settings import get_settings
 from fastpost.types import Pager
@@ -186,35 +184,39 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
     __abstract__ = True
 
     def __getattribute__(self, item):
-        if item in [relation.key for relation in inspect(type(self)).relationships]:
+        if item in [relation.key for relation in inspect(type(self)).relationships] or item in [f"{relation.key}_proxy"
+                                                                                                for relation in inspect(
+                type(self)).relationships]:
             relation = getattr(inspect(type(self)).attrs, item)
-            if not relation.uselist:
-                return RelationObjectFilter(type(self), relation.mapper.class_, **{
-                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).first()
-            if relation.direction.name == "ONETOMANY":
-                return RelationObjectFilter(type(self), relation.mapper.class_, **{
-                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).all()
-            if relation.direction.name == "MANYTOONE":
-                return RelationObjectFilter(type(self), relation.mapper.class_, **{
-                    f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)}).all()
-            if relation.direction.name == "MANYTOMANY":
-                return RelationObjectFilter(type(self), relation.mapper.class_).join(
+            many2many = RelationObjectFilter(type(self), relation.mapper.class_).join(
+                db.get_model_by_table_name(relation.secondary),
+                getattr(relation.mapper.class_, relation.secondaryjoin.left.key) == getattr(
                     db.get_model_by_table_name(relation.secondary),
-                    getattr(relation.mapper.class_, relation.secondaryjoin.left.key) == getattr(
-                        db.get_model_by_table_name(relation.secondary),
-                        relation.secondaryjoin.right.key)).filter(
-                    getattr(db.get_model_by_table_name(relation.secondary),
-                            relation.secondaryjoin.right.key) == self.to_dict().get(
-                        relation.secondaryjoin.left.key)).all()
-        elif item in [f"{relation.key}_proxy" for relation in inspect(type(self)).relationships]:
-            relation = getattr(inspect(type(self)).attrs, item)
-            return RelationObjectFilter(type(self), relation.mapper.class_, **{
+                    relation.secondaryjoin.right.key)).filter(
+                getattr(db.get_model_by_table_name(relation.secondary),
+                        relation.secondaryjoin.right.key) == self.to_dict().get(
+                    relation.secondaryjoin.left.key))
+            many2one = RelationObjectFilter(type(self), relation.mapper.class_, **{
                 f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)})
+            if item.endswith("_proxy"):
+                if relation.direction.name == "MANYTOMANY":
+                    return many2many
+                else:
+                    return many2one
+            else:
+                if not relation.uselist:
+                    return many2one.first()
+                if relation.direction.name == "ONETOMANY":
+                    return many2one.all()
+                if relation.direction.name == "MANYTOONE":
+                    return many2one.first()
+                if relation.direction.name == "MANYTOMANY":
+                    return many2many.all()
         return super().__getattribute__(item)
 
     def __setattr__(self, key, value):
         if key in [relation.key for relation in inspect(type(self)).relationships]:
-            raise Exception("Relationship set require add function of RelationObject")
+            raise Exception("Relationship set require using function of RelationObject")
         super(BaseModel, self).__setattr__(key, value)
 
     def to_dict(self):
@@ -242,21 +244,115 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                 "updated_at": datetime.now()
             }
             self_dict = self.to_dict()
+            m2o_relation_kwargs_list = []
+            m2m_relation_kwargs = {
+                "add": [],
+                "remove": []
+            }
             for key in update_fields:
                 if key not in self_dict.keys():
-                    if key in [f"{relation.key}_filter" for relation in inspect(type(self)).relationships]:
-                        # relationship_fields.append(key)
-                        pass
+                    if "proxy" in key and key.split("_")[0] in [relation.key for relation in
+                                                                inspect(type(self)).relationships]:
+                        relation_object_filter = getattr(self, key)  # type: RelationObjectFilter
+                        relation = relation_object_filter.relation
+                        relation_kwargs_list_temp = []
+                        if relation.direction.name == "ONETOMANY":
+                            # add
+                            for o in relation_object_filter.added_objects:
+                                relation_kwargs = {
+                                    "model": relation.mapper.class_,
+                                    "where": [
+                                        is_(getattr(relation.mapper.class_, relation.primaryjoin.right.key), None),
+                                        relation.mapper.class_.id == o.id, ],
+                                    "values": {
+                                        relation.primaryjoin.right.key: getattr(self, relation.primaryjoin.left.key)
+                                    }
+                                }
+                                relation_kwargs_list_temp.append(relation_kwargs)
+                            # remove
+                            for o in relation_object_filter.removed_objects:
+                                relation_kwargs = {
+                                    "model": relation.mapper.class_,
+                                    "where": [relation.mapper.class_.id == o.id, getattr(relation.mapper.class_,
+                                                                                         relation.primaryjoin.right.key) == getattr(
+                                        self, relation.primaryjoin.left.key)],
+                                    "values": {
+                                        relation.primaryjoin.right.key: None
+                                    }
+                                }
+                                relation_kwargs_list_temp.append(relation_kwargs)
+                        elif relation.direction.name == "MANYTOONE":
+                            # only need change self
+                            if relation_object_filter.change_to_object:
+                                kwargs[relation.primaryjoin.right.key] = getattr(
+                                    relation_object_filter.change_to_object, relation.primaryjoin.left.key)
+                            elif relation_object_filter.removed_objects:
+                                existed_value = getattr(self, relation.primaryjoin.left.key)
+                                remove_target_value = getattr(
+                                    relation_object_filter.removed_objects[0], relation.primaryjoin.left.key)
+                                if existed_value != remove_target_value:
+                                    raise Exception(
+                                        f"""Current object {relation.mapper.class_}-{existed_value} doesnt consist """
+                                        """with the object {relation.mapper.class_}-{remove_target_value} which """
+                                        """waiting for removing""")
+                                kwargs[relation.primaryjoin.right.key] = None
+                            else:
+                                raise Exception("Must use change_to first to specify the target object")
+                        elif relation.direction.name == "MANYTOMANY":
+                            # add
+                            secondary_model = db.get_model_by_table_name(relation.secondary)
+                            relation_kwargs = {
+                                "model": secondary_model,
+                            }
+                            for o in relation_object_filter.added_objects:
+                                relation_kwargs["values"] = {
+                                    relation.primaryjoin.right.key: getattr(self, relation.primaryjoin.left.key),
+                                    relation.secondaryjoin.right.key: getattr(o, relation.secondaryjoin.left.key)
+                                }
+                                m2m_relation_kwargs["add"].append(relation_kwargs)
+                            # remove
+                            for o in relation_object_filter.removed_objects:
+                                relation_kwargs["where"] = [
+                                    getattr(secondary_model,
+                                            relation.primaryjoin.right.key) == getattr(self,
+                                                                                       relation.primaryjoin.left.key),
+                                    getattr(secondary_model,
+                                            relation.secondaryjoin.right.key) == getattr(o,
+                                                                                         relation.primaryjoin.left.key),
+                                ]
+                                m2m_relation_kwargs["remove"].append(relation_kwargs)
+                        else:
+                            raise NotImplementedError
+                        m2o_relation_kwargs_list.extend(relation_kwargs_list_temp)
                     else:
                         raise Exception(f"Field {key} doesn't exist")
                 v = self_dict.get(key)
                 kwargs[key] = v
         async with db.session_ctx() as session:
-            await session.execute(update(self.__class__)
-                                  .where(self.__class__.id == self.id)
-                                  .values(**kwargs)
-                                  .execution_options(synchronize_session="fetch"))
-            await session.commit()
+            async with session.begin:
+                try:
+                    # update self
+                    await session.execute(update(self.__class__)
+                                          .where(self.__class__.id == self.id)
+                                          .values(**kwargs)
+                                          .execution_options(synchronize_session="fetch"))
+                    # update relationship
+                    for relation_kwargs in m2o_relation_kwargs_list:
+                        await session.execute(
+                            update(relation_kwargs.get("model")).where(*relation_kwargs.get("where")).values(
+                                **relation_kwargs.get("values")))
+                    # m2m add
+                    for relation_kwargs in m2m_relation_kwargs["add"]:
+                        await session.execute(
+                            insert(relation_kwargs.get("model")).values(
+                                **relation_kwargs.get("values")))
+                    # m2m remove
+                    for relation_kwargs in m2m_relation_kwargs["remove"]:
+                        await session.execute(
+                            delete(relation_kwargs.get("model")).where(*relation_kwargs.get("where")))
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
         return self
 
     @classmethod
@@ -510,16 +606,18 @@ class Filter:
 
 class RelationObjectFilter(Filter):
     added_objects = []
+    removed_objects = []
+    change_to_object = None
+    relation: RelationshipProperty = None
 
     def __init__(self, parent_model_cls, model_cls, *args, **kwargs):
-        if model_cls not in [relation.mapper.class_ for relation in inspect(parent_model_cls).relationships]:
+        for relation in inspect(parent_model_cls).relationships:
+            if model_cls == relation.mapper.class_:
+                self.relation = relation
+        if not self.relation:
             raise Exception(f"{model_cls} is not a relation object to {parent_model_cls}")
         self.parent_model = parent_model_cls
         super().__init__(model_cls, *args, **kwargs)
-
-    def add(self, *args):
-        assert all(isinstance(arg, self.query_model) for arg in args), f"Require instance of {self.query_model}"
-        self.added_objects.extend(args)
 
     def join(self, join_target: Union["BaseModel", AliasedClass], on):
         if isinstance(join_target, AliasedClass):
@@ -528,3 +626,37 @@ class RelationObjectFilter(Filter):
             self.join_models.add(join_target)
         self.join_param.append((join_target, on))
         return self
+
+    def add(self, *args):
+        """
+        新增
+        :param args:
+        :return:
+        """
+        if self.relation.direction.name == "MANYTOONE":
+            raise Exception("Cannot add objetc at MANY side in MANYTOONE relationship， maybe the change_to")
+        assert all(isinstance(arg, self.query_model) for arg in args), f"Require instance of {self.query_model}"
+        self.added_objects.extend(args)
+
+    def remove(self, *args):
+        """
+        解除
+        :param args:
+        :return:
+        """
+        assert all(isinstance(arg, self.query_model) for arg in args), f"Require instance of {self.query_model}"
+        self.removed_objects.extend(args)
+        if self.relation.direction.name != "MANYTOONE":
+            assert len(
+                self.removed_objects) == 1, "MANY side in MANYTOONE relationship must have only one related object "
+
+    def change_to(self, arg):
+        """
+        change the one of many2one
+        :param arg:
+        :return:
+        """
+        if self.relation.direction.name != "MANYTOONE":
+            raise Exception("Cannot only use change_to at MANY side in MANYTOONE relationship")
+        assert isinstance(arg, self.query_model), f"Require instance of {self.query_model}"
+        self.change_to_object = arg
