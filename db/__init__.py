@@ -37,7 +37,7 @@ from fastpost.types import Pager
 
 def create_engine():
     return create_async_engine(
-        get_settings().POSTGRES_DATABASE_URL_ASYNC, echo=not get_settings().DEBUG, pool_timeout=30, pool_pre_ping=True,
+        get_settings().POSTGRES_DATABASE_URL_ASYNC, echo=get_settings().DEBUG, pool_timeout=30, pool_pre_ping=True,
         max_overflow=0, pool_size=80 // get_settings().WORKERS, pool_recycle=3600, future=True,
     )
 
@@ -188,16 +188,20 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                                                                                                 for relation in inspect(
                 type(self)).relationships]:
             relation = getattr(inspect(type(self)).attrs, item)
-            many2many = RelationObjectFilter(type(self), relation.mapper.class_).join(
-                db.get_model_by_table_name(relation.secondary),
-                getattr(relation.mapper.class_, relation.secondaryjoin.left.key) == getattr(
+            many2many = many2one = None
+            if relation.direction.name == "MANYTOMANY":
+                many2many = RelationObjectFilter(type(self), relation.mapper.class_).join(
                     db.get_model_by_table_name(relation.secondary),
-                    relation.secondaryjoin.right.key)).filter(
-                getattr(db.get_model_by_table_name(relation.secondary),
-                        relation.secondaryjoin.right.key) == self.to_dict().get(
-                    relation.secondaryjoin.left.key))
-            many2one = RelationObjectFilter(type(self), relation.mapper.class_, **{
-                f"{relation.primaryjoin.right.key}": self.to_dict().get(relation.primaryjoin.left.key)})
+                    getattr(relation.mapper.class_, list(relation.local_columns)[0].key) == getattr(
+                        db.get_model_by_table_name(relation.secondary),
+                        relation.local_remote_pairs[0][1].key)).filter(
+                    getattr(db.get_model_by_table_name(relation.secondary),
+                            relation.local_remote_pairs[0][1].key) == self.to_dict().get(
+                        relation.local_remote_pairs[0][0].key))
+            else:
+                many2one = RelationObjectFilter(type(self), relation.mapper.class_, **{
+                    f"{relation.local_remote_pairs[0][1].key}": self.to_dict().get(
+                        relation.local_remote_pairs[0][0].key)})
             if item.endswith("_proxy"):
                 if relation.direction.name == "MANYTOMANY":
                     return many2many
@@ -215,8 +219,8 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         return super().__getattribute__(item)
 
     def __setattr__(self, key, value):
-        if key in [relation.key for relation in inspect(type(self)).relationships]:
-            raise Exception("Relationship set require using function of RelationObject")
+        if key == "id":
+            raise Exception("Cannot setattr of id")
         super(BaseModel, self).__setattr__(key, value)
 
     def to_dict(self):
@@ -244,7 +248,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                 "updated_at": datetime.now()
             }
             self_dict = self.to_dict()
-            m2o_relation_kwargs_list = []
+            o2m_relation_kwargs_list = []
             m2m_relation_kwargs = {
                 "add": [],
                 "remove": []
@@ -257,15 +261,19 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                         relation = relation_object_filter.relation
                         relation_kwargs_list_temp = []
                         if relation.direction.name == "ONETOMANY":
+                            self_related_value = getattr(self, relation.local_remote_pairs[0][0].key)
+                            remote_related_field = getattr(relation.mapper.class_,
+                                                           relation.local_remote_pairs[0][1].key)
+                            remote_related_field_key = relation.local_remote_pairs[0][1].key
                             # add
                             for o in relation_object_filter.added_objects:
                                 relation_kwargs = {
                                     "model": relation.mapper.class_,
                                     "where": [
-                                        is_(getattr(relation.mapper.class_, relation.primaryjoin.right.key), None),
+                                        is_(remote_related_field, None),
                                         relation.mapper.class_.id == o.id, ],
                                     "values": {
-                                        relation.primaryjoin.right.key: getattr(self, relation.primaryjoin.left.key)
+                                        remote_related_field_key: self_related_value
                                     }
                                 }
                                 relation_kwargs_list_temp.append(relation_kwargs)
@@ -273,29 +281,29 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                             for o in relation_object_filter.removed_objects:
                                 relation_kwargs = {
                                     "model": relation.mapper.class_,
-                                    "where": [relation.mapper.class_.id == o.id, getattr(relation.mapper.class_,
-                                                                                         relation.primaryjoin.right.key) == getattr(
-                                        self, relation.primaryjoin.left.key)],
+                                    "where": [relation.mapper.class_.id == o.id,
+                                              remote_related_field == self_related_value],
                                     "values": {
-                                        relation.primaryjoin.right.key: None
+                                        remote_related_field_key: None
                                     }
                                 }
                                 relation_kwargs_list_temp.append(relation_kwargs)
+                            o2m_relation_kwargs_list.extend(relation_kwargs_list_temp)
                         elif relation.direction.name == "MANYTOONE":
                             # only need change self
                             if relation_object_filter.change_to_object:
-                                kwargs[relation.primaryjoin.right.key] = getattr(
-                                    relation_object_filter.change_to_object, relation.primaryjoin.left.key)
+                                kwargs[relation.local_remote_pairs[0][0].key] = getattr(
+                                    relation_object_filter.change_to_object, relation.local_remote_pairs[0][1].key)
                             elif relation_object_filter.removed_objects:
-                                existed_value = getattr(self, relation.primaryjoin.left.key)
+                                existed_value = getattr(self, relation.local_remote_pairs[0][0].key)
                                 remove_target_value = getattr(
-                                    relation_object_filter.removed_objects[0], relation.primaryjoin.left.key)
+                                    relation_object_filter.removed_objects[0], relation.local_remote_pairs[0][1])
                                 if existed_value != remove_target_value:
                                     raise Exception(
                                         f"""Current object {relation.mapper.class_}-{existed_value} doesnt consist """
                                         """with the object {relation.mapper.class_}-{remove_target_value} which """
                                         """waiting for removing""")
-                                kwargs[relation.primaryjoin.right.key] = None
+                                kwargs[relation.local_remote_pairs[0][0].key] = None
                             else:
                                 raise Exception("Must use change_to first to specify the target object")
                         elif relation.direction.name == "MANYTOMANY":
@@ -304,63 +312,124 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                             relation_kwargs = {
                                 "model": secondary_model,
                             }
+                            self_related_value = getattr(self, relation.local_remote_pairs[0][0].key)
+                            self2secondary_key = relation.local_remote_pairs[0][1].key
+                            remote_key = relation.local_remote_pairs[1][0].key
+                            remote2secondary_key = relation.local_remote_pairs[1][1].key
                             for o in relation_object_filter.added_objects:
                                 relation_kwargs["values"] = {
-                                    relation.primaryjoin.right.key: getattr(self, relation.primaryjoin.left.key),
-                                    relation.secondaryjoin.right.key: getattr(o, relation.secondaryjoin.left.key)
+                                    self2secondary_key: self_related_value,
+                                    remote2secondary_key: getattr(o, remote_key)
                                 }
                                 m2m_relation_kwargs["add"].append(relation_kwargs)
                             # remove
                             for o in relation_object_filter.removed_objects:
                                 relation_kwargs["where"] = [
-                                    getattr(secondary_model,
-                                            relation.primaryjoin.right.key) == getattr(self,
-                                                                                       relation.primaryjoin.left.key),
-                                    getattr(secondary_model,
-                                            relation.secondaryjoin.right.key) == getattr(o,
-                                                                                         relation.primaryjoin.left.key),
+                                    self2secondary_key == self_related_value,
+                                    remote2secondary_key == getattr(o, remote_key),
                                 ]
                                 m2m_relation_kwargs["remove"].append(relation_kwargs)
                         else:
                             raise NotImplementedError
-                        m2o_relation_kwargs_list.extend(relation_kwargs_list_temp)
                     else:
                         raise Exception(f"Field {key} doesn't exist")
                 v = self_dict.get(key)
                 kwargs[key] = v
         async with db.session_ctx() as session:
-            async with session.begin:
-                try:
-                    # update self
-                    await session.execute(update(self.__class__)
-                                          .where(self.__class__.id == self.id)
-                                          .values(**kwargs)
-                                          .execution_options(synchronize_session="fetch"))
-                    # update relationship
-                    for relation_kwargs in m2o_relation_kwargs_list:
-                        await session.execute(
-                            update(relation_kwargs.get("model")).where(*relation_kwargs.get("where")).values(
-                                **relation_kwargs.get("values")))
-                    # m2m add
-                    for relation_kwargs in m2m_relation_kwargs["add"]:
-                        await session.execute(
-                            insert(relation_kwargs.get("model")).values(
-                                **relation_kwargs.get("values")))
-                    # m2m remove
-                    for relation_kwargs in m2m_relation_kwargs["remove"]:
-                        await session.execute(
-                            delete(relation_kwargs.get("model")).where(*relation_kwargs.get("where")))
-                    await session.commit()
-                except Exception:
-                    await session.rollback()
+            try:
+                # update self
+                await session.execute(update(self.__class__)
+                                      .where(self.__class__.id == self.id)
+                                      .values(**kwargs)
+                                      .execution_options(synchronize_session="fetch"))
+                # update o2m relationship
+                for relation_kwargs in o2m_relation_kwargs_list:
+                    await session.execute(
+                        update(relation_kwargs.get("model")).where(*relation_kwargs.get("where")).values(
+                            **relation_kwargs.get("values")))
+                # m2m add
+                for relation_kwargs in m2m_relation_kwargs["add"]:
+                    await session.execute(
+                        insert(relation_kwargs.get("model")).values(
+                            **relation_kwargs.get("values")))
+                # m2m remove
+                for relation_kwargs in m2m_relation_kwargs["remove"]:
+                    await session.execute(
+                        delete(relation_kwargs.get("model")).where(*relation_kwargs.get("where")))
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
         return self
 
     @classmethod
     async def create(cls, **kwargs):
+        one2many_kwargs_list = []
+        many2many_kwargs_list = []
+        for k, v in kwargs.items():
+            attr = inspect(cls).attrs.get(k)
+            if not attr:
+                raise Exception(f"{k} doesnt exist in model {cls}")
+            if isinstance(attr, RelationshipProperty):
+                if attr.direction.name == "MANYTOONE":
+                    if isinstance(v, attr.mapper.class_):
+                        kwargs[attr.local_remote_pairs[0][0].key] = getattr(v, attr.local_remote_pairs[0][1].key)
+                        del kwargs[k]
+                    else:
+                        raise Exception(f"the {k} need instance of {attr.mapper.class_}")
+                elif attr.direction.name == "ONETOMANY":
+                    remote_related_field = getattr(attr.mapper.class_,
+                                                   attr.local_remote_pairs[0][1].key)
+                    remote_related_field_key = attr.local_remote_pairs[0][1].key
+                    for o in v:
+                        if not isinstance(o, attr.mapper.class_):
+                            raise Exception(f"the {k} need instance of {attr.mapper.class_}")
+                        relation_kwargs = {
+                            "model": attr.mapper.class_,
+                            "where": [
+                                is_(remote_related_field, None),
+                                attr.mapper.class_.id == o.id, ],
+                            "value_key": remote_related_field_key
+                        }
+                        one2many_kwargs_list.append(relation_kwargs)
+                elif attr.direction.name == "MANYTOMANY":
+                    secondary_model = db.get_model_by_table_name(attr.secondary)
+                    relation_kwargs = {
+                        "model": secondary_model,
+                    }
+                    remote_key = attr.local_remote_pairs[1][0].key
+                    remote2secondary_key = attr.local_remote_pairs[1][1].key
+                    for o in v:
+                        if not isinstance(o, attr.mapper.class_):
+                            raise Exception(f"the {k} need instance of {attr.mapper.class_}")
+                        relation_kwargs["value_key"] = attr.local_remote_pairs[0][1].key
+                        relation_kwargs["values"] = {
+                            remote2secondary_key: getattr(o, remote_key)
+                        }
+                        many2many_kwargs_list.append(relation_kwargs)
+
         async with db.session_ctx() as session:
-            await session.add(cls(**kwargs))
-            result = await session.commit()
-        return result
+            try:
+                result = await session.execute(
+                    insert(cls).values(**kwargs).execution_options(synchronize_session="fetch"))
+
+                created_pk = result.inserted_primary_key[0]
+
+                for relation_kwargs in one2many_kwargs_list:
+                    await session.execute(
+                        update(relation_kwargs.get("model")).where(*relation_kwargs.get("where")).values(
+                            **{relation_kwargs.get("value_key"): created_pk}))
+                # m2m add
+                for relation_kwargs in many2many_kwargs_list:
+                    await session.execute(
+                        insert(relation_kwargs.get("model")).values(**relation_kwargs.get("values"),
+                                                                    **{relation_kwargs.get("value_key"): created_pk}))
+
+                await session.commit()
+                return await cls.get(created_pk)
+            except Exception as e:
+                await session.rollback()
+                raise e
 
     async def update(self, **kwargs):
         if "id" in kwargs.keys() or "created_at" in kwargs.keys():

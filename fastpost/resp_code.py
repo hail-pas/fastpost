@@ -20,12 +20,13 @@ class ResponseCodeEnum(int, Enum):
     # 100{[2-5]]xx}, http status code 拼接
 
     # 异常响应，999倒序取
-    NotAuthorized = (100999, "未授权")
-    TokenInvalid = (100998, "无效Token")
-    TokenExpired = (100997, "过期Token")
-    PermissionDeny = (100996, "权限不足")
-    TimeStampExpired = (100995, "时间戳过期")
-    SignCheckFailed = (100994, "Sign校验失败")
+    Failed = (100999, "失败")
+    NotAuthorized = (100998, "未授权")
+    TokenInvalid = (100997, "无效Token")
+    TokenExpired = (100996, "过期Token")
+    PermissionDeny = (100995, "权限不足")
+    TimeStampExpired = (100994, "时间戳过期")
+    SignCheckFailed = (100993, "Sign校验失败")
 
     @classmethod
     def items(cls):

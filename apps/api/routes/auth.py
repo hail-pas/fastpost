@@ -4,10 +4,12 @@ from fastapi import Body, APIRouter, Depends
 from pydantic import BaseModel
 from pydantic.errors import MissingError
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
+
 from apps.dependencies import jwt_required
 from common.encrypt import Jwt
 from db.models import User
-from fastpost.exceptions import NotFoundException
+from fastpost.exceptions import NotFoundException, CommonFailedException
 from fastpost.globals import g
 from fastpost.response import Resp, SimpleSuccess
 from fastpost.settings import get_settings
@@ -61,9 +63,6 @@ async def login(login_data: LoginSchema):
         raise NotFoundException("用户不存在")
     user.last_login_at = datetime.now()
     await user.save(update_fields=["last_login_at"])
-    print(await user.addresses)
-    print(await user.profile)
-    print(await user.groups)
     expired_at = datetime.now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
@@ -101,5 +100,8 @@ class RegisterIn(BaseModel):
 
 @router.post("/register", summary="用户注册", description="新用户注册接口", response_model=Resp[User.response_model])
 async def register(register_in: RegisterIn):
-    user = await User.create()
+    try:
+        user = await User.create(**register_in.dict())
+    except IntegrityError:
+        raise CommonFailedException("用户已存在")
     return Resp[User.response_model](data=user)

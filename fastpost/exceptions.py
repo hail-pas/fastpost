@@ -34,6 +34,11 @@ class ApiException(Exception):
         return AesResponse(content={"code": self.code, "message": self.message, "data": None})
 
 
+class CommonFailedException(ApiException):
+    code = ResponseCodeEnum.Failed.value
+    message = ResponseCodeEnum.Failed.label
+
+
 class NotAuthorizedException(ApiException):
     code = ResponseCodeEnum.NotAuthorized.value
     message = ResponseCodeEnum.NotAuthorized.label
