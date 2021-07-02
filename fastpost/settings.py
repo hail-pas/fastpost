@@ -4,7 +4,7 @@ import multiprocessing
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
-from pydantic import EmailStr, BaseSettings, validator
+from pydantic import EmailStr, BaseSettings, validator, root_validator
 
 ROOT = pathlib.Path(__file__).parent.parent
 
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     WORKERS: int = multiprocessing.cpu_count() * int(os.getenv("WORKERS_PER_CORE", "2")) + 1
 
     @validator("SENTRY_DSN", pre=True)
-    def sentry_dsn_can_be_blank(cls, v: str) -> Optional[str]:
+    def sentry_dsn_can_be_blank(cls, v: str, values, **kwargs) -> Optional[str]:
         if not v:
             return ""
         return v
@@ -36,11 +36,9 @@ class Settings(BaseSettings):
     # DataBase
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
-    DB_USER: str = "panhongqi"
-    DB_NAME: str = "fastpost"
-    DB_PASSWORD: str = "panhq112358"
-    POSTGRES_DATABASE_URL_ASYNC: str = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    POSTGRES_DATABASE_URL_SYNC: str = f"postgresql+pyscopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DB_USER: str
+    DB_NAME: str
+    DB_PASSWORD: str
 
     # Redis
     REDIS_HOST: str = "127.0.0.1"
@@ -87,9 +85,17 @@ class Settings(BaseSettings):
             return values["PROJECT_NAME"]
         return v
 
+    @property
+    def POSTGRES_DATABASE_URL_ASYNC(self):
+        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    @property
+    def POSTGRES_DATABASE_URL_SYNC(self):
+        return f"postgresql+pyscopg2://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
     class Config:
         case_sensitive = True
-        env_file = "../.env"
+        env_file = ".env"
         env_file_encoding = "utf-8"
 
 
