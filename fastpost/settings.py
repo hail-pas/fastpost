@@ -59,10 +59,10 @@ class Settings(BaseSettings):
     STATIC_DIR: str = f"{ROOT}/static"
 
     # JWT
-    JWT_SECRET: str = "oUdXHMQgh1jHQu0o5xxqqeEkQ0fBfUoQilWmtOnlJdE="
+    JWT_SECRET: str
     JWT_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    AES_SECRET: str = "MFu5wrmUD1POvPXyfyxWFvLYbj2kMgY6IxSSsIAUmcs="
-    SIGN_SECRET: str = "REdzQ1j00HhmvVmpUs4d3GakvtISX/6QZJE3ONhMIQE="
+    AES_SECRET: Optional[str]
+    SIGN_SECRET: str
 
     # logging
     LOGGING_CONFIG: Dict = None
