@@ -1,38 +1,29 @@
-import abc
 import re
-import sqlalchemy
-from asyncio import current_task
-from contextlib import asynccontextmanager
+import abc
+import uuid
+from typing import List, Type, Union, TypeVar, Optional
+from asyncio import sleep, current_task
 from datetime import datetime
-from typing import Optional, Any, Type, TypeVar, List, Union
-from pydantic import create_model, BaseConfig
-from sqlalchemy import func, inspect, select, update, insert, delete
-from sqlalchemy.orm import sessionmaker, declared_attr, declarative_base, DeclarativeMeta, ColumnProperty, \
-    RelationshipProperty, joinedload
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_scoped_session
-from sqlalchemy.ext.asyncio.result import AsyncScalarResult
-from sqlalchemy.orm.clsregistry import _ModuleMarker
-from sqlalchemy.orm.util import AliasedClass
+from contextlib import asynccontextmanager
+
+import sqlalchemy
+from pydantic import BaseConfig, create_model
+from sqlalchemy import func, delete, insert, select, update, inspect
+from sqlalchemy.orm import (ColumnProperty, DeclarativeMeta,
+                            RelationshipProperty, joinedload, sessionmaker,
+                            declared_attr, declarative_base)
 from sqlalchemy.sql import ClauseElement
+from pydantic.fields import FieldInfo, ModelField
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.ext.asyncio import (AsyncSession, create_async_engine,
+                                    async_scoped_session)
 from sqlalchemy.sql.operators import is_
+from sqlalchemy.orm.clsregistry import _ModuleMarker
+from sqlalchemy.ext.asyncio.result import AsyncScalarResult
+
+from fastpost.types import Pager
 from fastpost.response import generate_page_info
 from fastpost.settings import get_settings
-from fastpost.types import Pager
-
-
-# @event.listens_for(Engine, "before_cursor_execute")
-# def before_cursor_execute(conn, cursor, statement,
-#                          parameters, context, executemany):
-#    conn.info.setdefault('query_start_time', []).append(time.time())
-#    logger.debug("Start Query: %s", statement)
-
-
-# @event.listens_for(Engine, "after_cursor_execute")
-# def after_cursor_execute(conn, cursor, statement,
-#                         parameters, context, executemany):
-#    total = time.time() - conn.info['query_start_time'].pop(-1)
-#    logger.debug("Query Complete!")
-#    logger.debug("Total Time: %f", total)
 
 
 def create_engine():
@@ -42,6 +33,7 @@ def create_engine():
     )
 
 
+# fmt: off
 class SQLAlchemy:
     def __init__(self):
         self.Model = declarative_base()
@@ -55,19 +47,22 @@ class SQLAlchemy:
         return self.Model.metadata.drop_all(bind=connection)
 
     @asynccontextmanager
-    async def session_ctx(self):
+    async def session_ctx(self) -> AsyncSession:
         db_session = async_scoped_session(self.session_maker, current_task)
         try:
             yield db_session  # type: AsyncSession
         finally:
             await db_session.close()
 
-    def get_model_by_table_name(self, table):
+    def get_model_by_table(self, table):
         for c in self.Model.registry._class_registry.values():
             if isinstance(c, _ModuleMarker):
                 continue
             if inspect(c).local_table == table:
                 return c
+
+
+# fmt: on
 
 
 db = SQLAlchemy()
@@ -76,8 +71,6 @@ db = SQLAlchemy()
 class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
     PyModel = TypeVar('PyModel', bound='BaseModel')
     common_column = ["id", "created_at", "updated_at"]
-
-    # BaseModel Relation
 
     # Pydantic
     @property
@@ -98,7 +91,9 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                 orm_mode = True
 
             kwargs = {
-                "id": (int, ...)
+                "id": ModelField(name="id", type_=int, default=..., required=True,
+                                 field_info=FieldInfo(default=..., title="主键", description="唯一标示"),
+                                 model_config=Config, class_validators=None)
             }
             config = getattr(model, "Config")
             mapper = inspect(model)
@@ -120,7 +115,12 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                         default = None
                         if column.default is None and not column.nullable:
                             default = ...
-                        kwargs[column_name] = (python_type, default)
+                        kwargs[column_name] = ModelField(name=column_name, type_=python_type, default=None,
+                                                         required=bool(default),
+                                                         field_info=FieldInfo(default=None,
+                                                                              title=attr.columns[0].comment,
+                                                                              description=attr.columns[0].comment),
+                                                         model_config=Config, class_validators=None)
                 # 关联对象
                 # elif isinstance(attr, RelationshipProperty):
                 #     type_ = generate_response_model(attr.mapper.class_, recursive + 1)
@@ -132,11 +132,30 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
 
             if config:
                 for additional in getattr(config, "additional", []):
-                    if getattr(model, additional, None):
-                        kwargs[additional] = (Optional[Any], None)
-            kwargs["updated_at"] = (datetime, ...)
-            kwargs["created_at"] = (datetime, ...)
-            return create_model(f"{model.__name__}RespModel", __config__=Config, **kwargs)
+                    additional_attr = getattr(model, additional, None)
+                    if additional_attr:
+                        title = ""
+                        attr_doc = additional_attr.fget.__doc__
+                        if attr_doc:
+                            title = attr_doc.split("\n")[0] or attr_doc.split("\n")[1]
+                        kwargs[additional] = ModelField(name=additional,
+                                                        type_=additional_attr.fget.__annotations__.get("return"),
+                                                        required=False,
+                                                        field_info=FieldInfo(default=None, title=title,
+                                                                             description=title),
+                                                        model_config=Config, class_validators=None)
+            kwargs["updated_at"] = ModelField(name="updated_at", type_=datetime, default=None, required=True,
+                                              field_info=FieldInfo(default=None, title="更新时间",
+                                                                   description="更新时间"),
+                                              model_config=Config, class_validators=None)
+            kwargs["created_at"] = ModelField(name="created_at", type_=datetime, default=None, required=True,
+                                              field_info=FieldInfo(default=None, title="创建时间",
+                                                                   description="创建时间"),
+                                              model_config=Config, class_validators=None)
+            temp = create_model(f"{model.__name__}RespModel{str(uuid.uuid1())[:8]}",
+                                __config__=Config)
+            temp.__fields__ = kwargs
+            return temp
 
         return generate_response_model(cls, 0)
 
@@ -144,11 +163,15 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
     def create_schema(cls):
         kwargs = {}
         validators = {}
+
+        class Config(BaseConfig):
+            anystr_strip_whitespace = True
+
         for attr in inspect(cls).attrs:
             if isinstance(attr, ColumnProperty):
                 if attr.columns:
                     column_name = attr.key
-                    if column_name in cls.common_column:
+                    if column_name in cls.common_column or column_name.endswith("_id"):
                         continue
                     column = attr.columns[0]
                     python_type: Optional[type] = None
@@ -163,11 +186,87 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                         default = ...
                     kwargs[column_name] = (python_type, default)
             elif isinstance(attr, RelationshipProperty):
+
                 if not attr.uselist:
                     kwargs[attr.key] = (Optional[int], None)
                 else:
-                    kwargs[attr.key] = (Optional[List[int]], None)
-        return create_model(f"{cls.__name__}CreateSchema", __validators__=validators, **kwargs)
+                    if attr.direction.name == "MANYTOMANY":
+                        kwargs[attr.key] = (Optional[List[int]], None)
+                    elif attr.direction.name == "ONETOMANY":
+                        kwargs[attr.key] = (Optional[List[int]], None)
+                    elif attr.direction.name == "MANYTOONE":
+                        kwargs[attr.key] = (Optional[int], None)
+        return create_model(f"{cls.__name__}CreateSchema{str(uuid.uuid1())[:8]}", __validators__=validators,
+                            # __module__=f"db.{str(uuid.uuid1())[:8]}",
+                            __config__=Config, **kwargs)
+
+    @property
+    def update_schema(cls):
+        kwargs = {}
+        validators = {}
+
+        class Config(BaseConfig):
+            anystr_strip_whitespace = True
+
+        for attr in inspect(cls).attrs:
+            if isinstance(attr, ColumnProperty):
+                if attr.columns:
+                    column_name = attr.key
+                    if column_name in cls.common_column or column_name.endswith("_id"):
+                        continue
+                    column = attr.columns[0]
+                    python_type: Optional[type] = None
+                    if hasattr(column.type, "impl"):
+                        if hasattr(column.type.impl, "python_type"):
+                            python_type = column.type.impl.python_type
+                    elif hasattr(column.type, "python_type"):
+                        python_type = column.type.python_type
+                    assert python_type, f"Could not infer python_type for {column}"
+                    kwargs[column_name] = (Optional[python_type], None)
+            elif isinstance(attr, RelationshipProperty):
+
+                if not attr.uselist:
+                    kwargs[attr.key] = (Optional[int], None)
+                else:
+                    if attr.direction.name == "MANYTOMANY":
+                        kwargs[attr.key] = (Optional[List[int]], None)
+                    elif attr.direction.name == "ONETOMANY":
+                        kwargs[attr.key] = (Optional[List[int]], None)
+                    elif attr.direction.name == "MANYTOONE":
+                        kwargs[attr.key] = (Optional[int], None)
+        return create_model(f"{cls.__name__}UpdateSchema{str(uuid.uuid1())[:8]}", __validators__=validators,
+                            # __module__=f"db.{str(uuid.uuid1())[:8]}",
+                            __config__=Config, **kwargs)
+
+    @property
+    def create_filter_query(cls):
+        kwargs = {}
+        for attr in inspect(cls).attrs:
+            if isinstance(attr, ColumnProperty):
+                if attr.columns:
+                    column_name = attr.key
+                    if column_name in cls.common_column or column_name.endswith("_id"):
+                        continue
+                    column = attr.columns[0]
+                    python_type: Optional[type] = None
+                    if hasattr(column.type, "impl"):
+                        if hasattr(column.type.impl, "python_type"):
+                            python_type = column.type.impl.python_type
+                    elif hasattr(column.type, "python_type"):
+                        python_type = column.type.python_type
+                    assert python_type, f"Could not infer python_type for {column}"
+                    kwargs[column_name] = Optional[python_type]
+            elif isinstance(attr, RelationshipProperty):
+                if not attr.uselist:
+                    kwargs[attr.key] = Optional[int]
+                else:
+                    if attr.direction.name == "MANYTOMANY":
+                        kwargs[attr.key] = Optional[List[int]]
+                    elif attr.direction.name == "ONETOMANY":
+                        kwargs[attr.key] = Optional[List[int]]
+                    elif attr.direction.name == "MANYTOONE":
+                        kwargs[attr.key] = Optional[int]
+            return kwargs
 
 
 class BaseModel(db.Model, metaclass=BaseModelMeta):
@@ -191,11 +290,11 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
             many2many = many2one = None
             if relation.direction.name == "MANYTOMANY":
                 many2many = RelationObjectFilter(type(self), relation.mapper.class_).join(
-                    db.get_model_by_table_name(relation.secondary),
+                    db.get_model_by_table(relation.secondary),
                     getattr(relation.mapper.class_, list(relation.local_columns)[0].key) == getattr(
-                        db.get_model_by_table_name(relation.secondary),
+                        db.get_model_by_table(relation.secondary),
                         relation.local_remote_pairs[0][1].key)).filter(
-                    getattr(db.get_model_by_table_name(relation.secondary),
+                    getattr(db.get_model_by_table(relation.secondary),
                             relation.local_remote_pairs[0][1].key) == self.to_dict().get(
                         relation.local_remote_pairs[0][0].key))
             else:
@@ -308,7 +407,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                                 raise Exception("Must use change_to first to specify the target object")
                         elif relation.direction.name == "MANYTOMANY":
                             # add
-                            secondary_model = db.get_model_by_table_name(relation.secondary)
+                            secondary_model = db.get_model_by_table(relation.secondary)
                             relation_kwargs = {
                                 "model": secondary_model,
                             }
@@ -393,7 +492,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
                         }
                         one2many_kwargs_list.append(relation_kwargs)
                 elif attr.direction.name == "MANYTOMANY":
-                    secondary_model = db.get_model_by_table_name(attr.secondary)
+                    secondary_model = db.get_model_by_table(attr.secondary)
                     relation_kwargs = {
                         "model": secondary_model,
                     }
@@ -437,9 +536,32 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
         return await self.fill(**kwargs).save(update_fields=list(kwargs.keys()))
 
     async def delete(self):
+        await self.delete_with_pk(self.id)
+        self.__del__()
+
+    @classmethod
+    async def delete_with_pk(cls, pk: int):
+        stmt = delete(cls).where(cls.id == int(pk))
         async with db.session_ctx() as session:
-            await session.delete(self)
+            await session.execute(stmt)
             await session.commit()
+
+    @classmethod
+    async def update_with_pk(cls, pk: int, values: dict, one2many: List = None, many2many: List = None):
+        async with db.session_ctx() as session:
+            await session.execute(
+                update(cls).where(cls.id == int(pk)).values(**values).execution_options(synchronize_session="fetch"))
+
+            if one2many:
+                for related_model, related_pk, related_field in one2many:
+                    pass
+
+            if many2many:
+                for related_model, related_left_field, related_right_field in many2many:
+                    pass
+
+            await session.commit()
+            return await cls.get(pk)
 
     @classmethod
     async def get_or_create(cls, defaults=None, **kwargs):
@@ -468,7 +590,7 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
     @classmethod
     async def get(cls, pk):
         async with db.session_ctx() as session:
-            results = await session.execute(select(cls).where(cls.id == pk))
+            results = await session.execute(select(cls).where(cls.id == int(pk)))
             (result,) = results.one()
         return result
 
@@ -511,13 +633,20 @@ class BaseModel(db.Model, metaclass=BaseModelMeta):
     @classmethod
     async def page_data(cls, pager: Pager, *join_loads, **kwargs):
         page_info = generate_page_info(await cls.total(**kwargs), pager)
+        order_by_args = [
+            getattr(cls, order_field.lstrip("-")).desc() if "-" in order_field else getattr(cls,
+                                                                                            order_field.lstrip(
+                                                                                                "+")).asc() for
+            order_field in getattr(cls.Config, "order_by", ["-id"])]
         if join_loads:
             stmt = select(cls).options(
                 joinedload(*[getattr(cls, attr) for attr in join_loads])).filter(
-                *[getattr(cls, k) == v for k, v in kwargs.items()]).offset(pager.offset).limit(pager.limit)
+                *[getattr(cls, k) == v for k, v in kwargs.items()]).order_by(*order_by_args).offset(pager.offset).limit(
+                pager.limit)
         else:
             stmt = select(cls).filter(
-                *[getattr(cls, k) == v for k, v in kwargs.items()]).offset(pager.offset).limit(pager.limit)
+                *[getattr(cls, k) == v for k, v in kwargs.items()]).order_by(*order_by_args).offset(pager.offset).limit(
+                pager.limit)
         async with db.session_ctx() as session:
             data = (await session.execute(stmt)).scalars().all()
         return page_info, data
@@ -542,12 +671,12 @@ class Filter:
             getattr(model_cls, order_field.lstrip("-")).desc() if "-" in order_field else getattr(model_cls,
                                                                                                   order_field.lstrip(
                                                                                                       "+")).asc() for
-            order_field in getattr(model_cls.Config, "order_by", [])]
+            order_field in getattr(model_cls.Config, "order_by", ["-id"])]
         self.reverse_order_by_args = [
             getattr(model_cls, order_field.lstrip("-")).asc() if "-" in order_field else getattr(model_cls,
                                                                                                  order_field.lstrip(
                                                                                                      "+")).desc() for
-            order_field in getattr(model_cls.Config, "order_by", [])]
+            order_field in getattr(model_cls.Config, "order_by", ["-id"])]
         self.select_args = [model_cls]
         self.limit_ = None
         self.offset_ = None

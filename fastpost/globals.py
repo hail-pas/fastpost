@@ -1,6 +1,8 @@
 from typing import Any, Dict, Optional
-from contextvars import ContextVar, Token
+from contextvars import Token, ContextVar
+
 from starlette.types import Send, Scope, ASGIApp, Receive
+
 from common.redis import AsyncRedisUtil
 
 
@@ -12,7 +14,7 @@ class Globals:
 
     def __init__(self) -> None:
         object.__setattr__(self, "_vars", {})
-        object.__setattr__(self, '_reset_tokens', {})
+        object.__setattr__(self, "_reset_tokens", {})
 
     def initialize(self):
         pre_globals = {

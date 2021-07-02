@@ -1,7 +1,7 @@
-import multiprocessing
 import os
 import pathlib
-from typing import Any, Dict, Optional, List
+import multiprocessing
+from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
 from pydantic import EmailStr, BaseSettings, validator
@@ -89,8 +89,8 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
-        env_file = '../.env'
-        env_file_encoding = 'utf-8'
+        env_file = "../.env"
+        env_file_encoding = "utf-8"
 
 
 @lru_cache()

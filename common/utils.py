@@ -1,6 +1,6 @@
 import random
 import string
-from typing import List, Sequence
+from typing import Any, List, Generic, TypeVar, Callable, Sequence, cast
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 
@@ -42,18 +42,18 @@ async def send_mail(to_mails: Sequence[EmailStr], text: str, subject: str, email
     message["From"] = settings.EMAILS_FROM_EMAIL
     message["Subject"] = subject
     async with client:
-        ret = await client.send_message(message, recipients=to_mails, )
+        ret = await client.send_message(message, recipients=to_mails,)
     return ret
 
 
 def join_params(
-        params: dict,
-        key: str = None,
-        filter_none: bool = True,
-        exclude_keys: List = None,
-        sep: str = "&",
-        reverse: bool = False,
-        key_alias: str = "key",
+    params: dict,
+    key: str = None,
+    filter_none: bool = True,
+    exclude_keys: List = None,
+    sep: str = "&",
+    reverse: bool = False,
+    key_alias: str = "key",
 ):
     """
     字典排序拼接参数
@@ -99,3 +99,37 @@ def get_client_ip(request: Request):
     if forwarded:
         return forwarded.split(",")[0]
     return request.client.host
+
+
+def partial(func, *args):
+    def new_func(*fargs):
+        return func(*(args + fargs))
+
+    new_func.func = func
+    new_func.args = args
+    return new_func
+
+
+T_co = TypeVar("T_co", covariant=True)
+if T_co != int:
+    pass
+
+
+class Property(property, Generic[T_co]):
+    def fget(self) -> T_co:
+        return cast(T_co, super().fget())
+
+    def fset(self, value: T_co) -> None:
+        super().fset(value)
+
+    def fdel(self) -> None:
+        super().fdel()
+
+    def getter(self, fget: Callable[[Any], T_co]) -> "Property[T_co]":
+        return cast(Property[T_co], super().getter(fget))
+
+    def setter(self, fset: Callable[[Any, T_co], None]) -> "Property[T_co]":
+        return cast(Property[T_co], super().setter(fset))
+
+    def deleter(self, fdel: Callable[[Any], None]) -> "Property[T_co]":
+        return cast(Property[T_co], super().deleter(fdel))

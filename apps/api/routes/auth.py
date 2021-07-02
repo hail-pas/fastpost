@@ -1,18 +1,19 @@
-from datetime import timedelta, datetime
 from typing import Any
-from fastapi import Body, APIRouter, Depends
+from datetime import datetime, timedelta
+
+from fastapi import Body, Depends, APIRouter
 from pydantic import BaseModel
-from pydantic.errors import MissingError
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
+from pydantic.errors import MissingError
 
-from apps.dependencies import jwt_required
-from common.encrypt import Jwt
 from db.models import User
-from fastpost.exceptions import NotFoundException, CommonFailedException
+from common.encrypt import Jwt
 from fastpost.globals import g
+from apps.dependencies import jwt_required
 from fastpost.response import Resp, SimpleSuccess
 from fastpost.settings import get_settings
+from fastpost.exceptions import NotFoundException, CommonFailedException
 
 router = APIRouter(prefix="/auth")
 
@@ -58,7 +59,8 @@ class AuthData(BaseModel):
 @router.post("/login", summary="登录", description="登录接口", response_model=Resp[AuthData])
 async def login(login_data: LoginSchema):
     user = await User.filter(
-        or_(User.username == login_data.username, User.phone == login_data.phone)).first()  # type: User
+        or_(User.username == login_data.username, User.phone == login_data.phone)
+    ).first()  # type: User
     if not user:
         raise NotFoundException("用户不存在")
     user.last_login_at = datetime.now()
@@ -66,28 +68,32 @@ async def login(login_data: LoginSchema):
     expired_at = datetime.now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
-        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt(
-            {"user_id": user.id, "exp": expired_at}),
-        "expired_at": expired_at
+        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt({"user_id": user.id, "exp": expired_at}),
+        "expired_at": expired_at,
     }
     return Resp[AuthData](data=data)
 
 
-@router.post("/token/refresh", summary="刷新token", description="刷新token过期时间", response_model=Resp[AuthData],
-             dependencies=[Depends(jwt_required)])
+@router.post(
+    "/token/refresh",
+    summary="刷新token",
+    description="刷新token过期时间",
+    response_model=Resp[AuthData],
+    dependencies=[Depends(jwt_required)],
+)
 async def refresh_token():
     expired_at = datetime.now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
-        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt(
-            {"user_id": g.user.id, "exp": expired_at}),
-        "expired_at": expired_at
+        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt({"user_id": g.user.id, "exp": expired_at}),
+        "expired_at": expired_at,
     }
     return Resp[AuthData](data=data)
 
 
-@router.post("/logout", summary="登出", description="退出登录接口", response_model=SimpleSuccess,
-             dependencies=[Depends(jwt_required)])
+@router.post(
+    "/logout", summary="登出", description="退出登录接口", response_model=SimpleSuccess, dependencies=[Depends(jwt_required)]
+)
 async def logout():
     return
 

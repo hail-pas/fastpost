@@ -1,4 +1,4 @@
-checkfiles = main.py tests/ fastpost/ common/ db/ apps/
+checkfiles = main.py manage.py tests/ fastpost/ common/ db/ apps/
 black_opts = -l 120 -t py38
 py_warn = PYTHONDEVMODE=1
 flake8config = .flake8
@@ -28,7 +28,7 @@ style:
 
 check: deps
 	@poetry run flake8 --max-line-length=120 --ignore=E131,W503,E203 $(checkfiles)
-	@poetry run black --check $(black_opts) $(checkfiles) || (echo "Please run 'make style' to auto-fix style issues" && false)
+	@poetry run black --check $(black_opts) $(checkfiles)
 
 scheck: style check
 

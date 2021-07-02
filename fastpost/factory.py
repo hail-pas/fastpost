@@ -8,7 +8,7 @@ from sentry_sdk.integrations.redis import RedisIntegration
 
 from db import db
 from common.redis import AsyncRedisUtil
-from fastpost.globals import GlobalsMiddleware, g
+from fastpost.globals import GlobalsMiddleware
 from fastpost.response import AesResponse
 from fastpost.settings import Settings, get_settings
 from fastpost.exceptions import ApiException
@@ -113,7 +113,7 @@ def create_app(settings: Settings):
         default_response_class=AesResponse,
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc",
-        version="0.1.0"
+        version="0.1.0",
     )
     # thread local just flask like g
     main_app.add_middleware(GlobalsMiddleware)

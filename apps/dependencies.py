@@ -1,21 +1,20 @@
 import time
-from typing import Optional, Generator
+from typing import Optional
 from urllib.parse import unquote
 
 from jose import jwt
 from fastapi import Query, Header, Depends
 from pydantic import PositiveInt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from starlette.status import HTTP_406_NOT_ACCEPTABLE, HTTP_403_FORBIDDEN
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_406_NOT_ACCEPTABLE
 from starlette.requests import Request
 from starlette.exceptions import HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
 
-from common.utils import get_client_ip
-from fastpost.types import Pager
-from common.encrypt import Jwt, SignAuth
-from db import db
 from db.models import User
+from common.utils import get_client_ip
+from common.encrypt import Jwt, SignAuth
+from fastpost.types import Pager
 from fastpost.globals import g
 from fastpost.settings import get_settings
 from fastpost.exceptions import (
@@ -52,8 +51,8 @@ auth_schema = TheBearer()
 
 
 def get_pager(
-        page: PositiveInt = Query(default=1, example=1, description="第几页"),
-        size: PositiveInt = Query(default=10, example=10, description="每页数量"),
+    page: PositiveInt = Query(default=1, example=1, description="第几页"),
+    size: PositiveInt = Query(default=10, example=10, description="每页数量"),
 ):
     return Pager(limit=size, offset=(page - 1) * size)
 
@@ -74,13 +73,14 @@ async def jwt_required(request: Request, token: HTTPAuthorizationCredentials = D
     if not user:
         raise TokenInvalidException()
     g.user = user
+    request.scope["user"] = user
     return user
 
 
 async def sign_check(
-        request: Request,
-        x_timestamp: int = Header(..., example=int(time.time()), description="秒级时间戳"),
-        x_signature: str = Header(..., example="sign", description="签名"),
+    request: Request,
+    x_timestamp: int = Header(..., example=int(time.time()), description="秒级时间戳"),
+    x_signature: str = Header(..., example="sign", description="签名"),
 ):
     if request.method in ["GET", "DELETE"]:
         sign_str = request.scope["query_string"].decode()
@@ -99,7 +99,7 @@ async def sign_check(
             raise SignCheckFailedException()
 
 
-async def host_checker(request: Request, ):
+async def host_checker(request: Request,):
     if "*" in settings.ALLOWED_HOST_LIST:
         return
     caller_host = get_client_ip(request)

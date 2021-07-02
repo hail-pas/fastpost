@@ -1,17 +1,18 @@
 import logging
-from typing import Generic, TypeVar, Optional, List
+from math import ceil
+from typing import List, Generic, TypeVar, Optional
 from datetime import datetime
 
 import ujson
-from pydantic import typing, validator, BaseModel
+from pydantic import BaseModel, typing, validator
 from pydantic.generics import GenericModel
 from starlette.responses import JSONResponse
 
 from common.utils import COMMON_TIME_STRING
 from common.encrypt import AESUtil
+from fastpost.types import Pager
 from fastpost.settings import get_settings
 from fastpost.resp_code import ResponseCodeEnum
-from fastpost.types import Pager
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class Resp(GenericModel, Generic[DataT]):
         if values.get("message") is None and values.get("code") != ResponseCodeEnum.Success.value:
             raise ValueError(f"Must provide a message when code is not {ResponseCodeEnum.Success.value}!")
         if values.get("message") and v:
-            raise ValueError(f"Response can't provide both message and data!")
+            raise ValueError("Response can't provide both message and data!")
         return v
 
 
@@ -70,6 +71,7 @@ class PageInfo(BaseModel):
     """
     翻页相关信息
     """
+
     total_page: int
     total_count: int
     size: int
@@ -82,5 +84,9 @@ class PageResp(Resp, Generic[DataT]):
 
 
 def generate_page_info(total_count, pager: Pager):
-    return PageInfo(total_page=total_count // pager.limit, total_count=total_count, size=pager.limit,
-                    page=pager.offset // pager.limit + 1)
+    return PageInfo(
+        total_page=ceil(total_count / pager.limit),
+        total_count=total_count,
+        size=pager.limit,
+        page=pager.offset // pager.limit + 1,
+    )

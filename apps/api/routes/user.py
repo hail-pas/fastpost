@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import Depends, APIRouter
 
-from apps.dependencies import get_pager
 from db.models import Address
-from fastpost.globals import g
-from fastpost.response import PageResp
 from fastpost.types import Pager
+from fastpost.globals import g
+from apps.dependencies import get_pager
+from fastpost.response import PageResp
 
 router = APIRouter(prefix="/user")
 
