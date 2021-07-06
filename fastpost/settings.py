@@ -4,7 +4,7 @@ import multiprocessing
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
 
-from pydantic import EmailStr, BaseSettings, validator, root_validator
+from pydantic import EmailStr, BaseSettings, validator
 
 ROOT = pathlib.Path(__file__).parent.parent
 

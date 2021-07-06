@@ -15,8 +15,7 @@ authors = ["phoenix <hypofiasco@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 ipython = "7.24.1"
-#sqlalchemy = "1.4.18"
-sqlalchemy = {git = "https://github.com/sqlalchemy/sqlalchemy.git"}
+sqlalchemy = "1.4.20"
 fastapi = "0.65.2"
 uvicorn = "0.14.0"
 gunicorn = "20.1.0"

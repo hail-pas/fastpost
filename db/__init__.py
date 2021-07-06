@@ -1,9 +1,9 @@
 import re
 import abc
-import uuid
 from typing import List, Type, Union, TypeVar, Optional
-from asyncio import sleep, current_task
+from asyncio import current_task
 from datetime import datetime
+from functools import lru_cache
 from contextlib import asynccontextmanager
 
 import sqlalchemy
@@ -33,7 +33,6 @@ def create_engine():
     )
 
 
-# fmt: off
 class SQLAlchemy:
     def __init__(self):
         self.Model = declarative_base()
@@ -62,9 +61,6 @@ class SQLAlchemy:
                 return c
 
 
-# fmt: on
-
-
 db = SQLAlchemy()
 
 
@@ -74,6 +70,7 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
 
     # Pydantic
     @property
+    @lru_cache(None)
     def response_model(cls) -> Type['PyModel']:
         """
         自动生成 pydantic_model 用于数据序列化, 不包括外键
@@ -152,7 +149,7 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                                               field_info=FieldInfo(default=None, title="创建时间",
                                                                    description="创建时间"),
                                               model_config=Config, class_validators=None)
-            temp = create_model(f"{model.__name__}RespModel{str(uuid.uuid1())[:8]}",
+            temp = create_model(f"{model.__name__}RespModel",
                                 __config__=Config)
             temp.__fields__ = kwargs
             return temp
@@ -160,11 +157,13 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
         return generate_response_model(cls, 0)
 
     @property
+    @lru_cache(None)
     def create_schema(cls):
         kwargs = {}
         validators = {}
 
         class Config(BaseConfig):
+            title = f"{cls.__name__}CreateSchema"
             anystr_strip_whitespace = True
 
         for attr in inspect(cls).attrs:
@@ -196,16 +195,17 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                         kwargs[attr.key] = (Optional[List[int]], None)
                     elif attr.direction.name == "MANYTOONE":
                         kwargs[attr.key] = (Optional[int], None)
-        return create_model(f"{cls.__name__}CreateSchema{str(uuid.uuid1())[:8]}", __validators__=validators,
-                            # __module__=f"db.{str(uuid.uuid1())[:8]}",
+        return create_model(f"{cls.__name__}CreateSchema", __validators__=validators,
                             __config__=Config, **kwargs)
 
     @property
+    @lru_cache(None)
     def update_schema(cls):
         kwargs = {}
         validators = {}
 
         class Config(BaseConfig):
+            title = f"{cls.__name__}UpdateSchema"
             anystr_strip_whitespace = True
 
         for attr in inspect(cls).attrs:
@@ -234,8 +234,7 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
                         kwargs[attr.key] = (Optional[List[int]], None)
                     elif attr.direction.name == "MANYTOONE":
                         kwargs[attr.key] = (Optional[int], None)
-        return create_model(f"{cls.__name__}UpdateSchema{str(uuid.uuid1())[:8]}", __validators__=validators,
-                            # __module__=f"db.{str(uuid.uuid1())[:8]}",
+        return create_model(f"{cls.__name__}UpdateSchema", __validators__=validators,
                             __config__=Config, **kwargs)
 
     @property
@@ -271,8 +270,9 @@ class BaseModelMeta(DeclarativeMeta, abc.ABCMeta):
 
 class BaseModel(db.Model, metaclass=BaseModelMeta):
     id = sqlalchemy.Column(comment="ID", type_=sqlalchemy.Integer, primary_key=True, index=True)
-    created_at = sqlalchemy.Column(comment="创建时间", type_=sqlalchemy.DateTime, server_default=func.now(), )
-    updated_at = sqlalchemy.Column(comment="更新时间", type_=sqlalchemy.DateTime, server_default=func.now(),
+    created_at = sqlalchemy.Column(comment="created_at datetime", type_=sqlalchemy.DateTime,
+                                   server_default=func.now(), )
+    updated_at = sqlalchemy.Column(comment="updated_at datetime", type_=sqlalchemy.DateTime, server_default=func.now(),
                                    onupdate=func.now())
 
     # Generate table name automatically
