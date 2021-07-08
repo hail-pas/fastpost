@@ -19,30 +19,10 @@ class Globals:
     def initialize(self):
         pre_globals = {
             "redis": AsyncRedisUtil,
-            # "session": await db.session.__anext__(),  # type: AsyncSession
-            # "engine": db.engine  # type: AsyncEngine
         }
         for item, value in pre_globals.items():
             self._ensure_var(item)
             self._vars[item].set(value)
-
-    # @property
-    # def session(self) -> Optional[AsyncSession]:
-    #     self._ensure_var("session")
-    #     try:
-    #         return self._vars["session"].get()
-    #     except LookupError:
-    #         self._vars["session"].set(None)
-    #         return None
-    #
-    # @property
-    # def engine(self) -> Optional[AsyncEngine]:
-    #     self._ensure_var("engine")
-    #     try:
-    #         return self._vars["engine"].get()
-    #     except LookupError:
-    #         self._vars["engine"].set(None)
-    #         return None
 
     @property
     def redis(self) -> Optional[AsyncRedisUtil]:

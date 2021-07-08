@@ -4,9 +4,9 @@ from fastapi import FastAPI, APIRouter
 from starlette.exceptions import HTTPException
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from tortoise.contrib.starlette import register_tortoise
 from sentry_sdk.integrations.redis import RedisIntegration
 
-from db import db
 from common.redis import AsyncRedisUtil
 from fastpost.globals import GlobalsMiddleware
 from fastpost.response import AesResponse
@@ -101,8 +101,6 @@ def init_apps(main_app: FastAPI):
     async def close() -> None:
         # 关闭redis
         await AsyncRedisUtil.close()
-        # 关闭数据库
-        await db.engine.dispose()
 
 
 def create_app(settings: Settings):
@@ -124,6 +122,8 @@ def create_app(settings: Settings):
     setup_middleware(main_app)
     # 初始化全局 error handling
     setup_exception_handlers(main_app)
+    # 注册 tortoise ORM
+    register_tortoise(main_app, config=settings.TORTOISE_ORM_CONFIG)
     # 启停配置
     init_apps(main_app)
     # 初始化 sentry

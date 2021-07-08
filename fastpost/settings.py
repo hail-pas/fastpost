@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # DataBase
     DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
+    DB_PORT: int = 3306
     DB_USER: str
     DB_NAME: str
     DB_PASSWORD: str
@@ -92,6 +92,38 @@ class Settings(BaseSettings):
     @property
     def POSTGRES_DATABASE_URL_SYNC(self):
         return f"postgresql+pyscopg2://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    @property
+    def TORTOISE_ORM_CONFIG(self):
+        return {
+            "connections": {
+                "default": {
+                    "engine": "tortoise.backends.mysql",
+                    "credentials": {
+                        "host": self.DB_HOST,
+                        "port": self.DB_PORT,
+                        "user": self.DB_USER,
+                        "password": self.DB_PASSWORD,
+                        "database": self.DB_NAME,
+                        "echo": self.DEBUG,
+                        "maxsize": 10,
+                    },
+                },
+                "shell": {
+                    "engine": "tortoise.backends.mysql",
+                    "credentials": {
+                        "host": self.DB_HOST,
+                        "port": self.DB_PORT,
+                        "user": self.DB_USER,
+                        "password": self.DB_PASSWORD,
+                        "database": self.DB_NAME,
+                        "echo": self.DEBUG,
+                        "maxsize": 10,
+                    },
+                },
+            },
+            "apps": {"models": {"models": ["db.models", "aerich.models"], "default_connection": "default"}},
+        }
 
     class Config:
         case_sensitive = True

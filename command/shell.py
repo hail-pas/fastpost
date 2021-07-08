@@ -1,26 +1,43 @@
-import asyncio
-import importlib
-
 from command import cli
+
+
+async def init_ctx_db():
+    import importlib
+    from tortoise import Tortoise
+    from tortoise.transactions import get_connection
+    from fastpost.settings import get_settings
+    await Tortoise.init(config=get_settings().TORTOISE_ORM_CONFIG)
+    main = importlib.import_module("__main__")
+    ctx = main.__dict__
+    ctx.update({"db": get_connection("shell")})
 
 
 @cli.command("shell", short_help="命令行模式")
 def shell():
-    from IPython import embed
+    import importlib
+    from IPython import embed, start_ipython
     import cProfile
     import pdb
-    from db import BaseModel, db
+    from traitlets.config import Config
+    from db import BaseModel
 
-    models = {cls.__name__: cls for cls in BaseModel.__subclasses__()}
+    # models = {cls.__name__: cls for cls in BaseModel.__subclasses__()}
     main = importlib.import_module("__main__")
     ctx = main.__dict__
     ctx.update(
         {
-            **models,
-            # "session": session,
-            "db": db,
+            # **models,
             "ipdb": pdb,
             "cProfile": cProfile,
         }
     )
-    embed(user_ns=ctx, banner2="", using="asyncio", colors="neutral")
+    conf = Config()
+    conf.InteractiveShellApp.exec_lines = [
+        "print('System Ready!')",
+        "from command.shell import init_ctx_db",
+        "await init_ctx_db()",
+    ]
+    conf.TerminalInteractiveShell.loop_runner = "asyncio"
+    conf.TerminalInteractiveShell.colors = "neutral"
+    conf.TerminalInteractiveShell.autoawait = True
+    start_ipython(argv=[], user_ns=ctx, config=conf)

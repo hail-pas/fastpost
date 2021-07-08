@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 
 from fastapi import Body, Depends, APIRouter
 from pydantic import BaseModel
-from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
 from pydantic.errors import MissingError
+from tortoise.exceptions import IntegrityError
+from tortoise.query_utils import Q
 
 from db.models import User
 from common.encrypt import Jwt
@@ -58,9 +58,7 @@ class AuthData(BaseModel):
 
 @router.post("/login", summary="登录", description="登录接口", response_model=Resp[AuthData])
 async def login(login_data: LoginSchema):
-    user = await User.filter(
-        or_(User.username == login_data.username, User.phone == login_data.phone)
-    ).first()  # type: User
+    user = await User.filter(Q(username=login_data.username) | Q(phone=login_data.phone)).first()  # type: User
     if not user:
         raise NotFoundException("用户不存在")
     user.last_login_at = datetime.now()

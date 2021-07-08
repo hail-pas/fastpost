@@ -1,3 +1,8 @@
+"""
+Websocket
+"""
+
+
 from socketio import ASGIApp, AsyncServer, AsyncRedisManager
 
 from fastpost.settings import get_settings
