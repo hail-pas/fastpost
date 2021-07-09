@@ -123,6 +123,8 @@ class Settings(BaseSettings):
                 },
             },
             "apps": {"models": {"models": ["db.models", "aerich.models"], "default_connection": "default"}},
+            # "use_tz": True,   # Will Always Use UTC as Default Timezone
+            "timezone": "Asia/Shanghai",
         }
 
     class Config:

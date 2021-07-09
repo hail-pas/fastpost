@@ -1,11 +1,13 @@
 from typing import Any, List, Optional
 
 from tortoise import Model, BaseDBAsyncClient, fields
+
+# from tortoise.contrib.pydantic import pydantic_model_creator
 from tortoise.models import ModelMeta
 from tortoise.query_utils import Q
-from tortoise.contrib.pydantic import pydantic_model_creator
 
-from fastpost.types import Pager
+from db.serializers import pydantic_model_creator
+from fastpost.schema import Pager
 from fastpost.response import generate_page_info
 from fastpost.settings import get_settings
 
@@ -15,6 +17,7 @@ TORTOISE_ORM_CONFIG = get_settings().TORTOISE_ORM_CONFIG
 class BaseModelMeta(ModelMeta):
     @property
     def response_model(cls):
+        # noinspection PyTypeChecker
         return pydantic_model_creator(cls)
 
 
@@ -44,5 +47,33 @@ class BaseModel(Model, metaclass=BaseModelMeta):
     ):
         queryset = cls.filter(*args, **kwargs)
         page_info = generate_page_info(await queryset.count(), pager)
-        data = await queryset.limit(pager.limit).offset(pager.offset)
+        data = (
+            await queryset.limit(pager.limit)
+            .offset(pager.offset)
+            .select_related(*cls.get_select_related_fields())
+            .prefetch_related(*cls.get_prefetch_related_fields())
+        )
         return page_info, data
+
+    @classmethod
+    def get_select_related_fields(cls) -> List[str]:
+        select_related_fields = []
+        for field_name, field_desc in cls._meta.fields_map.items():
+            if isinstance(field_desc, fields.relational.ForeignKeyFieldInstance) or isinstance(
+                field_desc, fields.relational.OneToOneFieldInstance
+            ):
+                select_related_fields.append(field_name)
+        return select_related_fields
+
+    @classmethod
+    def get_prefetch_related_fields(cls) -> List[str]:
+        prefetch_related_fields = []
+        for field_name, field_desc in cls._meta.fields_map.items():
+            if (
+                isinstance(field_desc, fields.relational.BackwardFKRelation)
+                or isinstance(field_desc, fields.relational.ManyToManyFieldInstance)
+                or isinstance(field_desc, fields.relational.BackwardOneToOneRelation)
+            ):
+                prefetch_related_fields.append(field_name)
+
+        return prefetch_related_fields

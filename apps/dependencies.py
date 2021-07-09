@@ -14,7 +14,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from db.models import User
 from common.utils import get_client_ip
 from common.encrypt import Jwt, SignAuth
-from fastpost.types import Pager
+from fastpost.schema import Pager
 from fastpost.globals import g
 from fastpost.settings import get_settings
 from fastpost.exceptions import (

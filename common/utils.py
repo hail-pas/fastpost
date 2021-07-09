@@ -1,11 +1,12 @@
 import random
 import string
-from typing import Any, List, Generic, TypeVar, Callable, Sequence, cast
+from typing import List, Sequence
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 
 from pydantic import EmailStr
 from aiosmtplib import SMTP
+from tortoise.timezone import now
 from starlette.requests import Request
 
 from fastpost.settings import get_settings
@@ -110,26 +111,6 @@ def partial(func, *args):
     return new_func
 
 
-T_co = TypeVar("T_co", covariant=True)
-if T_co != int:
-    pass
-
-
-class Property(property, Generic[T_co]):
-    def fget(self) -> T_co:
-        return cast(T_co, super().fget())
-
-    def fset(self, value: T_co) -> None:
-        super().fset(value)
-
-    def fdel(self) -> None:
-        super().fdel()
-
-    def getter(self, fget: Callable[[Any], T_co]) -> "Property[T_co]":
-        return cast(Property[T_co], super().getter(fget))
-
-    def setter(self, fset: Callable[[Any, T_co], None]) -> "Property[T_co]":
-        return cast(Property[T_co], super().setter(fset))
-
-    def deleter(self, fdel: Callable[[Any], None]) -> "Property[T_co]":
-        return cast(Property[T_co], super().deleter(fdel))
+# datetime util
+def datetime_now():
+    return now()

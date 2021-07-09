@@ -1,9 +1,9 @@
 from typing import Optional
-from datetime import datetime
 
 from tortoise import fields
 
-from db import BaseModel
+from db import BaseModel, enums
+from common.utils import datetime_now
 
 
 class User(BaseModel):
@@ -12,6 +12,8 @@ class User(BaseModel):
     password = fields.CharField(max_length=128, description="密码")
     last_login_at = fields.DatetimeField(null=True, description="最近一次登录时间")
     remark = fields.CharField(max_length=256, default="", description="备注")
+    # noinspection PyTypeChecker
+    status = fields.IntEnumField(enum_type=enums.GeneralStatus, description="状态", default=enums.GeneralStatus.on)
 
     profile: fields.ReverseRelation["Profile"]
     addresses: fields.ReverseRelation["Address"]
@@ -27,14 +29,13 @@ class User(BaseModel):
         """
         if not self.last_login_at:
             return None
-        return (datetime.now() - self.last_login_at).days
+        return (datetime_now() - self.last_login_at).days
 
     class Meta:
         table_description = "用户"
         ordering = ["-id"]
 
     class PydanticMeta:
-        exclude = ("password",)
         computed = ("from_last_login_days",)
 
 

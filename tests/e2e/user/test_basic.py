@@ -11,14 +11,14 @@ client = TestClient(current_app)
     [
         (
             "post",
-            "api/user/address",
+            "user/address",
             {
-                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxfQ.v1zQUnB4-WXrjFV6MbsKxv6JFm7_KrLbll695qEPcTg"  # noqa: E501
+                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE2MjYzNTczNTl9.vf7YlyrHOetO4HRuksjwcPWov-w3-CuutilBwLvhYpg"  # noqa: E501
             },
             None,
             None,
             100200,
-        )
+        ),
     ],
 )
 def test_above(method, path, headers, params, body, expected_code):

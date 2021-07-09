@@ -37,6 +37,8 @@ def shell():
         "from command.shell import init_ctx_db",
         "await init_ctx_db()",
     ]
+    # DEBUG=10, INFO=20, WARN=30
+    conf.InteractiveShellApp.log_level = 30
     conf.TerminalInteractiveShell.loop_runner = "asyncio"
     conf.TerminalInteractiveShell.colors = "neutral"
     conf.TerminalInteractiveShell.autoawait = True

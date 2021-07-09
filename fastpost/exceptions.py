@@ -31,7 +31,7 @@ class ApiException(Exception):
 
     def to_result(self):
         assert self.code, "Response Must Have Response Code"
-        return AesResponse(content={"code": self.code, "message": self.message, "data": None})
+        return AesResponse(content={"code": self.code, "responseTime": None, "message": self.message, "data": None})
 
 
 class CommonFailedException(ApiException):

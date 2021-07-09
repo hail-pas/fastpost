@@ -1,17 +1,13 @@
-from enum import Enum, unique
+from enum import unique
+
+from common.types import IntEnumMore
 
 
 @unique
-class ResponseCodeEnum(int, Enum):
+class ResponseCodeEnum(IntEnumMore):
     """
     业务响应代码，除了500之外都在200的前提下返回对用code
     """
-
-    def __new__(cls, value, label):
-        obj = int.__new__(cls)
-        obj._value_ = value
-        obj.label = label
-        return obj
 
     # 唯一成功响应
     Success = (100200, "成功")
@@ -27,7 +23,3 @@ class ResponseCodeEnum(int, Enum):
     PermissionDeny = (100995, "权限不足")
     TimeStampExpired = (100994, "时间戳过期")
     SignCheckFailed = (100993, "Sign校验失败")
-
-    @classmethod
-    def items(cls):
-        return {item.value: item.label for item in cls}

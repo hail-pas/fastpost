@@ -3,15 +3,12 @@ from math import ceil
 from typing import List, Generic, TypeVar, Optional
 from datetime import datetime
 
-import ujson
 from pydantic import BaseModel, typing, validator
 from pydantic.generics import GenericModel
 from starlette.responses import JSONResponse
 
 from common.utils import COMMON_TIME_STRING
-from common.encrypt import AESUtil
-from fastpost.types import Pager
-from fastpost.settings import get_settings
+from fastpost.schema import Pager
 from fastpost.resp_code import ResponseCodeEnum
 
 logger = logging.getLogger(__name__)
@@ -22,20 +19,21 @@ class AesResponse(JSONResponse):
     响应：
     res = {
         "code": 100200,
+        "responseTime": "datetime",
         "message": "message",  # 当code不等于100200表示业务错误，该字段返回错误信息
         "data": "data"    # 当code等于100200表示正常调用，该字段返回正常结果
-        "responseTime": "time"
         }
     不直接使用该Response， 使用下面的响应Model - 具有校验/生成文档的功能
     """
 
-    def __init__(self, content: typing.Any = None, **kwargs):
-        content["responseTime"] = datetime.now().strftime(COMMON_TIME_STRING)
-        super().__init__(content, status_code=200, **kwargs)
+    def __init__(self, content: typing.Any = None, status_code=200, **kwargs):
+        super().__init__(content, status_code=status_code, **kwargs)
 
     def render(self, content: typing.Any) -> bytes:
-        if not get_settings().DEBUG:
-            content = AESUtil(get_settings().AES_SECRET).encrypt_data(ujson.dumps(content))
+        # update responseTime
+        content["responseTime"] = datetime.now().strftime(COMMON_TIME_STRING)
+        # if not get_settings().DEBUG:
+        #     content = AESUtil(get_settings().AES_SECRET).encrypt_data(ujson.dumps(content))
         return super(AesResponse, self).render(content)
 
 
@@ -48,7 +46,7 @@ class Resp(GenericModel, Generic[DataT]):
     """
 
     code: int = ResponseCodeEnum.Success.value
-    responseTime: datetime = datetime.now().strftime(COMMON_TIME_STRING)
+    responseTime: datetime = None
     message: Optional[str] = None
     data: Optional[DataT] = None
 
