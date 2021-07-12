@@ -69,26 +69,27 @@ def setup_middleware(main_app: FastAPI):
             logger.exception(f"Set Middleware Failed: {middle_fc}, Encounter {e}")
 
 
-def setup_static_app(main_app: FastAPI, settings: Settings):
+def setup_static_app(main_app: FastAPI, current_settings: Settings):
     """
     init static app
     :param main_app:
-    :param settings:
+    :param current_settings:
     :return:
     """
-    static_files_app = StaticFiles(directory=settings.STATIC_DIR)
+    static_files_app = StaticFiles(directory=current_settings.STATIC_DIR)
     main_app.mount(path=settings.STATIC_PATH, app=static_files_app, name="static")
 
 
-def setup_sentry(settings: Settings):
+def setup_sentry(current_settings: Settings):
     """
     init sentry
-    :param settings:
+    :param current_settings:
     :return:
     """
     import sentry_sdk
 
-    sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENVIRONMENT, integrations=[RedisIntegration()])
+    sentry_sdk.init(dsn=current_settings.SENTRY_DSN, environment=current_settings.ENVIRONMENT,
+                    integrations=[RedisIntegration()])
 
 
 def init_apps(main_app: FastAPI):
@@ -103,13 +104,13 @@ def init_apps(main_app: FastAPI):
         await AsyncRedisUtil.close()
 
 
-def create_app(settings: Settings):
+def create_app(current_settings: Settings):
     main_app = MainApp(
-        debug=settings.DEBUG,
-        title=settings.PROJECT_NAME,
-        description=settings.DESCRIPTION,
+        debug=current_settings.DEBUG,
+        title=current_settings.PROJECT_NAME,
+        description=current_settings.DESCRIPTION,
         default_response_class=AesResponse,
-        docs_url="/docs" if settings.DEBUG else None,
+        docs_url="/docs" if current_settings.DEBUG else None,
         redoc_url="/redoc",
         version="0.1.0",
     )
@@ -117,18 +118,18 @@ def create_app(settings: Settings):
     main_app.add_middleware(GlobalsMiddleware)
     # 挂载apps下的路由 以及 静态资源路由
     amount_apps(main_app)
-    setup_static_app(main_app, settings)
+    setup_static_app(main_app, current_settings)
     # 初始化全局 middleware
     setup_middleware(main_app)
     # 初始化全局 error handling
     setup_exception_handlers(main_app)
     # 注册 tortoise ORM
-    register_tortoise(main_app, config=settings.TORTOISE_ORM_CONFIG)
+    register_tortoise(main_app, config=current_settings.TORTOISE_ORM_CONFIG)
     # 启停配置
     init_apps(main_app)
     # 初始化 sentry
     if settings.SENTRY_DSN:
-        setup_sentry(settings)
+        setup_sentry(current_settings)
 
     return main_app
 
