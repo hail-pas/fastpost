@@ -1,12 +1,10 @@
 from typing import Any, List, Optional
 
 from tortoise import Model, BaseDBAsyncClient, fields
-
-# from tortoise.contrib.pydantic import pydantic_model_creator
 from tortoise.models import ModelMeta
 from tortoise.query_utils import Q
 
-from db.serializers import pydantic_model_creator
+from db.serializers import RecursionLimitPydanticMeta, pydantic_model_creator
 from fastpost.schema import Pager
 from fastpost.response import generate_page_info
 from fastpost.settings import get_settings
@@ -58,9 +56,15 @@ class BaseModel(Model, metaclass=BaseModelMeta):
     @classmethod
     def get_select_related_fields(cls) -> List[str]:
         select_related_fields = []
+        pydantic_meta = getattr(cls, "PydanticMeta", RecursionLimitPydanticMeta)
         for field_name, field_desc in cls._meta.fields_map.items():
-            if isinstance(field_desc, fields.relational.ForeignKeyFieldInstance) or isinstance(
-                field_desc, fields.relational.OneToOneFieldInstance
+            if (
+                (
+                    isinstance(field_desc, fields.relational.ForeignKeyFieldInstance)
+                    or isinstance(field_desc, fields.relational.OneToOneFieldInstance)
+                )
+                and field_name not in getattr(pydantic_meta, "exclude", ())
+                and (not getattr(pydantic_meta, "include", ()) or field_name in getattr(pydantic_meta, "include", ()))
             ):
                 select_related_fields.append(field_name)
         return select_related_fields
@@ -68,11 +72,16 @@ class BaseModel(Model, metaclass=BaseModelMeta):
     @classmethod
     def get_prefetch_related_fields(cls) -> List[str]:
         prefetch_related_fields = []
+        pydantic_meta = getattr(cls, "PydanticMeta", RecursionLimitPydanticMeta)
         for field_name, field_desc in cls._meta.fields_map.items():
             if (
-                isinstance(field_desc, fields.relational.BackwardFKRelation)
-                or isinstance(field_desc, fields.relational.ManyToManyFieldInstance)
-                or isinstance(field_desc, fields.relational.BackwardOneToOneRelation)
+                (
+                    isinstance(field_desc, fields.relational.BackwardFKRelation)
+                    or isinstance(field_desc, fields.relational.ManyToManyFieldInstance)
+                    or isinstance(field_desc, fields.relational.BackwardOneToOneRelation)
+                )
+                and field_name not in getattr(pydantic_meta, "exclude", ())
+                and (not getattr(pydantic_meta, "include", ()) or field_name in getattr(pydantic_meta, "include", ()))
             ):
                 prefetch_related_fields.append(field_name)
 
