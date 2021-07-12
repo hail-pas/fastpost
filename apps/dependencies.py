@@ -11,12 +11,12 @@ from starlette.requests import Request
 from starlette.exceptions import HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
 
-from db.models import User
 from common.utils import get_client_ip
 from common.encrypt import Jwt, SignAuth
+from db.mysql.models import User
 from fastpost.schema import Pager
 from fastpost.globals import g
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 from fastpost.exceptions import (
     TokenExpiredException,
     TokenInvalidException,
@@ -24,8 +24,6 @@ from fastpost.exceptions import (
     SignCheckFailedException,
     TimeStampExpiredException,
 )
-
-settings = get_settings()
 
 
 class TheBearer(HTTPBearer):

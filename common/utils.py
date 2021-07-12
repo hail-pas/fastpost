@@ -9,7 +9,7 @@ from aiosmtplib import SMTP
 from tortoise.timezone import now
 from starlette.requests import Request
 
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 
 COMMON_TIME_STRING = "%Y-%m-%d %H:%M:%S"
 COMMON_DATE_STRING = "%Y-%m-%d"
@@ -24,7 +24,6 @@ async def send_mail(to_mails: Sequence[EmailStr], text: str, subject: str, email
     :param email_type:
     :return:
     """
-    settings = get_settings()
     to_mails = to_mails
     text = text
     subject = subject

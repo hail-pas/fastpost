@@ -2,7 +2,7 @@ from typing import Optional
 
 from tortoise import fields
 
-from db import BaseModel, enums
+from db.mysql import BaseModel, enums
 from common.utils import datetime_now
 
 

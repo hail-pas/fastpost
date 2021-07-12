@@ -5,10 +5,10 @@ Websocket
 
 from socketio import ASGIApp, AsyncServer, AsyncRedisManager
 
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 
 sio = AsyncServer(
-    client_manager=AsyncRedisManager(get_settings().SIO_REDIS_URL), async_mode="asgi", cors_allowed_origins=["*"],
+    client_manager=AsyncRedisManager(settings.SIO_REDIS_URL), async_mode="asgi", cors_allowed_origins=["*"],
 )
 
 spi_app = ASGIApp(socketio_server=sio, socketio_path="/socket.io")

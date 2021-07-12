@@ -3,9 +3,9 @@ import subprocess
 from functools import partial
 
 import typer
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 
-db_typer = typer.Typer(short_help="数据库相关")
+db_typer = typer.Typer(short_help="MySQL相关")
 
 shell = partial(subprocess.run, shell=True)
 
@@ -15,7 +15,7 @@ def create_db():
     shell(
         'mysql -h {host} --port={port} -u{user} -p{password} -e '
         '"CREATE DATABASE IF NOT EXISTS \\`{database}\\` default character set utf8mb4 collate utf8mb4_general_ci;"'.format(
-            **get_settings().TORTOISE_ORM_CONFIG.get("connections").get("default").get("credentials")
+            **settings.TORTOISE_ORM_CONFIG.get("connections").get("default").get("credentials")
         )
     )
 
@@ -25,7 +25,7 @@ def drop_db():
     shell(
         'mysql -h {host} --port={port} -u{user} -p{password} -e '
         '"DROP DATABASE \\`{database}\\`;"'.format(
-            **get_settings().TORTOISE_ORM_CONFIG.get("connections").get("default").get("credentials"))
+            **settings.TORTOISE_ORM_CONFIG.get("connections").get("default").get("credentials"))
     )
 
 

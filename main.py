@@ -1,9 +1,8 @@
 import uvicorn
 
 from fastpost.factory import current_app
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 
-settings = get_settings()
 app = current_app
 
 if __name__ == "__main__":

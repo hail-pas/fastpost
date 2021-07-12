@@ -3,7 +3,7 @@ import inspect
 from fastapi import Query, Depends, APIRouter
 from starlette.requests import Request
 
-from db import enums
+from db.mysql import enums
 from fastpost import resp_code
 from fastpost.response import Resp
 from fastpost.exceptions import NotFoundException

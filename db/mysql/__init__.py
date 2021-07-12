@@ -4,12 +4,12 @@ from tortoise import Model, BaseDBAsyncClient, fields
 from tortoise.models import ModelMeta
 from tortoise.query_utils import Q
 
-from db.serializers import RecursionLimitPydanticMeta, pydantic_model_creator
 from fastpost.schema import Pager
 from fastpost.response import generate_page_info
-from fastpost.settings import get_settings
+from fastpost.settings import settings
+from db.mysql.serializer import RecursionLimitPydanticMeta, pydantic_model_creator
 
-TORTOISE_ORM_CONFIG = get_settings().TORTOISE_ORM_CONFIG
+TORTOISE_ORM_CONFIG = settings.TORTOISE_ORM_CONFIG
 
 
 class BaseModelMeta(ModelMeta):

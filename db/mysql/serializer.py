@@ -111,7 +111,8 @@ def pydantic_model_creator(
     """
 
     # Fully qualified class name
-    fqname = cls.__module__ + "." + cls.__qualname__
+    # fqname = cls.__module__ + "." + cls.__qualname__
+    fqname = "Mysql." + cls.__qualname__
     postfix = ""
 
     def get_name() -> str:

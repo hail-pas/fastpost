@@ -7,13 +7,13 @@ from pydantic.errors import MissingError
 from tortoise.exceptions import IntegrityError
 from tortoise.query_utils import Q
 
-from db.models import User
 from common.utils import datetime_now
 from common.encrypt import Jwt
+from db.mysql.models import User
 from fastpost.globals import g
 from apps.dependencies import jwt_required
 from fastpost.response import Resp, SimpleSuccess
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 from fastpost.exceptions import NotFoundException, CommonFailedException
 
 router = APIRouter(prefix="/auth")
@@ -64,10 +64,10 @@ async def login(login_data: LoginSchema):
         raise NotFoundException("用户不存在")
     user.last_login_at = datetime_now()
     await user.save(update_fields=["last_login_at"])
-    expired_at = datetime_now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
+    expired_at = datetime_now() + timedelta(minutes=settings.JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
-        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt({"user_id": user.id, "exp": expired_at}),
+        "token_value": Jwt(settings.JWT_SECRET).get_jwt({"user_id": user.id, "exp": expired_at}),
         "expired_at": expired_at,
     }
     return Resp[AuthData](data=data)
@@ -81,10 +81,10 @@ async def login(login_data: LoginSchema):
     dependencies=[Depends(jwt_required)],
 )
 async def refresh_token():
-    expired_at = datetime_now() + timedelta(minutes=get_settings().JWT_TOKEN_EXPIRE_MINUTES)
+    expired_at = datetime_now() + timedelta(minutes=settings.JWT_TOKEN_EXPIRE_MINUTES)
     data = {
         "token_type": "Bearer",
-        "token_value": Jwt(get_settings().JWT_SECRET).get_jwt({"user_id": g.user.id, "exp": expired_at}),
+        "token_value": Jwt(settings.JWT_SECRET).get_jwt({"user_id": g.user.id, "exp": expired_at}),
         "expired_at": expired_at,
     }
     return Resp[AuthData](data=data)

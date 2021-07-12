@@ -1,6 +1,6 @@
 import typer
 
-from command.db import db_typer
+from command.mysql import db_typer
 
 banner = """
 -------  -----  ------- ------- ------- ------- ------- -------

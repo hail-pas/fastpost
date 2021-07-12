@@ -34,16 +34,21 @@ class Settings(BaseSettings):
         return v
 
     # DataBase
+    # ========MySQL
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str
     DB_NAME: str
     DB_PASSWORD: str
 
-    # Redis
+    # =========Redis
     REDIS_HOST: str = "127.0.0.1"
-    REDIS_PORT: str = "6379"
+    REDIS_PORT: int = 6379
     REDIS_PASSWORD: str = None
+
+    # =========HBase
+    THRIFT_HOST: str = "192.168.3.75"
+    THRIFT_PORT: int = 9090
 
     # SocketIO Redis Manager
     SIO_REDIS_URL: str = f"redis://:{REDIS_PASSWORD}@{REDIS_PORT}:{REDIS_PORT}/4"
@@ -122,7 +127,7 @@ class Settings(BaseSettings):
                     },
                 },
             },
-            "apps": {"models": {"models": ["db.models", "aerich.models"], "default_connection": "default"}},
+            "apps": {"models": {"models": ["db.mysql.models", "aerich.models"], "default_connection": "default"}},
             # "use_tz": True,   # Will Always Use UTC as Default Timezone
             "timezone": "Asia/Shanghai",
         }
@@ -136,3 +141,6 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+
+
+settings = get_settings()

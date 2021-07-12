@@ -1,11 +1,11 @@
 import json
 import os
-from fastpost.settings import get_settings
+from fastpost.settings import settings
 
 host = "0.0.0.0"
 port = "8000"
-debug = get_settings().DEBUG
-workers = get_settings().WORKERS
+debug = settings.DEBUG
+workers = settings.WORKERS
 worker_class = 'uvicorn.workers.UvicornWorker'
 
 # Gunicorn config variables

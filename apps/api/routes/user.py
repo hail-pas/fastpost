@@ -1,6 +1,6 @@
 from fastapi import Depends, APIRouter
 
-from db.models import Address
+from db.mysql.models import Address
 from fastpost.schema import Pager
 from fastpost.globals import g
 from apps.dependencies import get_pager

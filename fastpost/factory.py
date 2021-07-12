@@ -7,10 +7,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from tortoise.contrib.starlette import register_tortoise
 from sentry_sdk.integrations.redis import RedisIntegration
 
-from common.redis import AsyncRedisUtil
+from db.redis import AsyncRedisUtil
 from fastpost.globals import GlobalsMiddleware
 from fastpost.response import AesResponse
-from fastpost.settings import Settings, get_settings
+from fastpost.settings import Settings, settings
 from fastpost.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class MainApp(FastAPI):
 
     @property
     def settings(self) -> Settings:
-        return get_settings()
+        return settings
 
 
 def amount_apps(main_app: FastAPI):
@@ -133,4 +133,4 @@ def create_app(settings: Settings):
     return main_app
 
 
-current_app = create_app(settings=get_settings())
+current_app = create_app(settings=settings)

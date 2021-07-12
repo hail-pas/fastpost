@@ -5,8 +5,8 @@ async def init_ctx_db():
     import importlib
     from tortoise import Tortoise
     from tortoise.transactions import get_connection
-    from fastpost.settings import get_settings
-    await Tortoise.init(config=get_settings().TORTOISE_ORM_CONFIG)
+    from fastpost.settings import settings
+    await Tortoise.init(config=settings.TORTOISE_ORM_CONFIG)
     main = importlib.import_module("__main__")
     ctx = main.__dict__
     ctx.update({"db": get_connection("shell")})
@@ -15,11 +15,10 @@ async def init_ctx_db():
 @cli.command("shell", short_help="命令行模式")
 def shell():
     import importlib
-    from IPython import embed, start_ipython
+    from IPython import start_ipython
     import cProfile
     import pdb
     from traitlets.config import Config
-    from db import BaseModel
 
     # models = {cls.__name__: cls for cls in BaseModel.__subclasses__()}
     main = importlib.import_module("__main__")

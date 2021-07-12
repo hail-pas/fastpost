@@ -3,7 +3,7 @@ from contextvars import Token, ContextVar
 
 from starlette.types import Send, Scope, ASGIApp, Receive
 
-from common.redis import AsyncRedisUtil
+from db.redis import AsyncRedisUtil
 
 
 class Globals:
