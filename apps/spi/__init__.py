@@ -1,25 +1,50 @@
-"""
-Websocket
-"""
+import asyncio
+import logging
+from typing import Any
+
+from fastapi import FastAPI, WebSocket
+from starlette.endpoints import WebSocketEndpoint
+from starlette.websockets import WebSocketDisconnect
+
+from apps.spi.manage import ws_manager
+
+logger = logging.getLogger("websocket")
+
+spi_app = FastAPI()
 
 
-from socketio import ASGIApp, AsyncServer, AsyncRedisManager
-
-from fastpost.settings import settings
-
-sio = AsyncServer(
-    client_manager=AsyncRedisManager(settings.SIO_REDIS_URL), async_mode="asgi", cors_allowed_origins=["*"],
-)
-
-spi_app = ASGIApp(socketio_server=sio, socketio_path="/socket.io")
-
-
-@sio.on("connect")
-async def on_connect(sid, environ, auth):
-    # await sio.emit("drawing", kwargs)
-    ...
+@spi_app.websocket("/example")
+async def func_websocket_route(websocket: WebSocket, client_id: int):
+    await ws_manager.connect(websocket)
+    try:
+        await ws_manager.send_privete_json({"msg": "Hello WebSocket"}, websocket)
+        # while True:
+        #     data = await websocket.receive_text()
+        #     await ws_manager.send_private_message(f"You wrote: {data}", websocket)
+        #     await ws_manager.broadcast(f"Client #{client_id} says: {data}")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+        await ws_manager.broadcast(f"Client #{client_id} left the chat")
 
 
-@sio.on("drawing")
-async def on_drawing(sid, data):
-    await sio.emit("drawing", data, broadcast=True)
+@spi_app.websocket("/example2")
+class WebSocketTicks(WebSocketEndpoint):
+    async def on_connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        self.ticker_task = asyncio.create_task(self.tick(websocket))
+        logger.debug("connected")
+
+    async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
+        self.ticker_task.cancel()
+        logger.debug("disconnected")
+
+    async def on_receive(self, websocket: WebSocket, data: Any) -> None:
+        await websocket.send_json({"Message: ": data})
+
+    async def tick(self, websocket: WebSocket) -> None:
+        counter = 0
+        while True:
+            logger.debug(counter)
+            await websocket.send_json({"counter": counter})
+            counter += 1
+            await asyncio.sleep(1)

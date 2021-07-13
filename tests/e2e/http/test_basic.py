@@ -10,10 +10,10 @@ client = TestClient(current_app)
     "method, path, headers, params, body, expected_code",
     [
         (
-            "post",
+            "get",
             "user/address",
             {
-                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE2MjYzNTczNTl9.vf7YlyrHOetO4HRuksjwcPWov-w3-CuutilBwLvhYpg"  # noqa: E501
+                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE2MjY3NzA1NTV9.LjzvLpx_fPntAyCjpSz_yUNyng9_qnyoLo44R14M38o"  # noqa: E501
             },
             None,
             None,

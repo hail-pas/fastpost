@@ -88,8 +88,9 @@ def setup_sentry(current_settings: Settings):
     """
     import sentry_sdk
 
-    sentry_sdk.init(dsn=current_settings.SENTRY_DSN, environment=current_settings.ENVIRONMENT,
-                    integrations=[RedisIntegration()])
+    sentry_sdk.init(
+        dsn=current_settings.SENTRY_DSN, environment=current_settings.ENVIRONMENT, integrations=[RedisIntegration()]
+    )
 
 
 def init_apps(main_app: FastAPI):
@@ -134,4 +135,4 @@ def create_app(current_settings: Settings):
     return main_app
 
 
-current_app = create_app(settings=settings)
+current_app = create_app(current_settings=settings)
