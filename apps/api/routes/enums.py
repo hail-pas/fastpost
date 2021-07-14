@@ -8,7 +8,7 @@ from fastpost import resp_code
 from fastpost.response import Resp
 from fastpost.exceptions import NotFoundException
 
-router = APIRouter(prefix="/curd")
+router = APIRouter()
 
 
 def get_enum_content(request: Request, enum_name: str = Query(None, description="码表名字", example="GeneralStatus")):
@@ -38,11 +38,11 @@ def get_enum_content(request: Request, enum_name: str = Query(None, description=
     return enum_content
 
 
-@router.get("/enums/list", description="枚举-列表", summary="枚举表", response_model=Resp[dict])
+@router.get("/list", description="枚举-列表", summary="枚举表", response_model=Resp[dict])
 async def enum_content_list(enum_content=Depends(get_enum_content)):
     return Resp[dict](data=enum_content)
 
 
-@router.get("/enums/json", description="枚举-JSON", summary="枚举表", response_model=Resp[dict])
+@router.get("/json", description="枚举-JSON", summary="枚举表", response_model=Resp[dict])
 async def enum_content_json(enum_content=Depends(get_enum_content)):
     return Resp[dict](data=enum_content)

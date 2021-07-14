@@ -6,6 +6,21 @@ from db.mysql import BaseModel, enums
 from common.utils import datetime_now
 
 
+class Config(BaseModel):
+    label = fields.CharField(max_length=200)
+    key = fields.CharField(max_length=100, unique=True)
+    value = fields.JSONField()
+    safe = fields.BooleanField(default=False, description="是否可返回")
+    # noinspection PyTypeChecker
+    status = fields.IntEnumField(enums.GeneralStatus, description="状态", default=enums.GeneralStatus.on)
+
+    class PydanticMeta:
+        exclude = ("safe", "status")
+
+    class Meta:
+        table_description = "在线参数配置"
+
+
 class User(BaseModel):
     username = fields.CharField(max_length=50, description="用户名称", unique=True)
     phone = fields.CharField(max_length=11, description="手机号", unique=True)

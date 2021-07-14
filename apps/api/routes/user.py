@@ -6,7 +6,7 @@ from fastpost.globals import g
 from apps.dependencies import get_pager
 from fastpost.response import PageResp
 
-router = APIRouter(prefix="/user")
+router = APIRouter()
 
 
 @router.get("/address", summary="地址", description="地址", response_model=PageResp[Address.response_model])

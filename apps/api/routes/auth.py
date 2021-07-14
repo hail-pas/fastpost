@@ -16,7 +16,7 @@ from fastpost.response import Resp, SimpleSuccess
 from fastpost.settings import settings
 from fastpost.exceptions import NotFoundException, CommonFailedException
 
-router = APIRouter(prefix="/auth")
+router = APIRouter()
 
 """
 1. request_schema
