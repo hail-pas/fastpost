@@ -22,6 +22,8 @@ def create_db():
 
 @db_typer.command("drop", short_help="删除数据库")
 def drop_db():
+    if settings.ENVIRONMENT == "Production":
+        return "Forbidden operation in Production Environment"
     shell(
         'mysql -h {host} --port={port} -u{user} -p{password} -e '
         '"DROP DATABASE \\`{database}\\`;"'.format(
