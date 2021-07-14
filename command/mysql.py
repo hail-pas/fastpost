@@ -31,7 +31,7 @@ def drop_db():
 
 @db_typer.command("init-config", short_help="初始化数据库配置")
 def init_config():
-    shell("aerich init -t db.TORTOISE_ORM_CONFIG")
+    shell("aerich init -t db.mysql.TORTOISE_ORM_CONFIG")
 
 
 @db_typer.command("init", short_help="初始化数据库")
