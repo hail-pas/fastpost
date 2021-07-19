@@ -51,12 +51,12 @@ def copy_project(name: str = typer.Option(default=None, help="项目名称"),
 
             if current_src_path.is_file():
                 if is_sub or need in FILES:
-                    # dest_file = dest_path.open(mode="w", encoding="utf-8")
-                    # with open(current_src_path, mode="r") as src_file:
-                    #     for line in src_file:
-                    #         dest_file.write(line.replace("core", name))
-                    #
-                    # dest_file.close()
+                    dest_file = dest_path.open(mode="w", encoding="utf-8")
+                    with open(current_src_path, mode="r") as src_file:
+                        for line in src_file:
+                            dest_file.write(line.replace("fastpost", name))
+
+                    dest_file.close()
                     print("copied to ", dest_path, end="\n")
 
             elif current_src_path.is_dir():
