@@ -91,14 +91,6 @@ class Settings(BaseSettings):
         return v
 
     @property
-    def POSTGRES_DATABASE_URL_ASYNC(self):
-        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-
-    @property
-    def POSTGRES_DATABASE_URL_SYNC(self):
-        return f"postgresql+pyscopg2://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-
-    @property
     def TORTOISE_ORM_CONFIG(self):
         return {
             "connections": {
