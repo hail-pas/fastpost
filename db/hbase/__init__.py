@@ -6,7 +6,7 @@ from pydantic import create_model
 from happybase import Table, Connection, ConnectionPool
 
 from common.types import Map
-from fastpost.settings import settings
+from core.settings import settings
 
 
 def hbase_connection_pool(size: int = 10, **kwargs) -> ConnectionPool:

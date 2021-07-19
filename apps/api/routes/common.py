@@ -1,8 +1,8 @@
 from fastapi import Query, APIRouter
 
 from db.mysql import enums
+from core.response import PageResp
 from db.mysql.models import Config
-from fastpost.response import PageResp
 
 router = APIRouter()
 

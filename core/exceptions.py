@@ -3,8 +3,8 @@ from typing import Optional
 from starlette.requests import Request
 from starlette.exceptions import HTTPException
 
-from fastpost.response import AesResponse
-from fastpost.resp_code import ResponseCodeEnum
+from core.response import AesResponse
+from core.resp_code import ResponseCodeEnum
 
 
 async def http_exception_handler(request: Request, exc: HTTPException):

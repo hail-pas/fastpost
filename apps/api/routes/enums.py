@@ -3,10 +3,10 @@ import inspect
 from fastapi import Query, Depends, APIRouter
 from starlette.requests import Request
 
+from core import resp_code
 from db.mysql import enums
-from fastpost import resp_code
-from fastpost.response import Resp
-from fastpost.exceptions import NotFoundException
+from core.response import Resp
+from core.exceptions import NotFoundException
 
 router = APIRouter()
 

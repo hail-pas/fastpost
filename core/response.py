@@ -7,9 +7,9 @@ from pydantic import BaseModel, typing, validator
 from pydantic.generics import GenericModel
 from starlette.responses import JSONResponse
 
+from core.schema import Pager
 from common.utils import COMMON_TIME_STRING
-from fastpost.schema import Pager
-from fastpost.resp_code import ResponseCodeEnum
+from core.resp_code import ResponseCodeEnum
 
 logger = logging.getLogger(__name__)
 

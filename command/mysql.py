@@ -3,7 +3,7 @@ import subprocess
 from functools import partial
 
 import typer
-from fastpost.settings import settings
+from core.settings import settings
 
 db_typer = typer.Typer(short_help="MySQL相关")
 

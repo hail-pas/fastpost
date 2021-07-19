@@ -1,7 +1,7 @@
 import uvicorn
 
-from fastpost.factory import current_app
-from fastpost.settings import settings
+from core.factory import current_app
+from core.settings import settings
 
 app = current_app
 

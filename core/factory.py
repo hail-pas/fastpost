@@ -8,10 +8,10 @@ from tortoise.contrib.starlette import register_tortoise
 from sentry_sdk.integrations.redis import RedisIntegration
 
 from db.redis import AsyncRedisUtil
-from fastpost.globals import GlobalsMiddleware
-from fastpost.response import AesResponse
-from fastpost.settings import Settings, settings
-from fastpost.exceptions import ApiException
+from core.globals import GlobalsMiddleware
+from core.response import AesResponse
+from core.settings import Settings, settings
+from core.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def amount_apps(main_app: FastAPI):
 
 def setup_exception_handlers(main_app: FastAPI):
     main_app.add_exception_handler(ApiException, lambda request, err: err.to_result())
-    from fastpost.exceptions import roster
+    from core.exceptions import roster
 
     for handler in roster:
         main_app.add_exception_handler(HTTPException, handler)
@@ -51,7 +51,7 @@ def setup_middleware(main_app: FastAPI):
     """
     from inspect import isclass, isfunction
 
-    from fastpost.middlewares import roster
+    from core.middlewares import roster
 
     for middle_fc in roster:
         try:

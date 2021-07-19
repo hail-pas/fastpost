@@ -4,7 +4,7 @@ import logging
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
-from fastpost.settings import settings
+from core.settings import settings
 
 loop = asyncio.get_event_loop()
 

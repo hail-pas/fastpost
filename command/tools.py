@@ -8,7 +8,7 @@ tool_typer = typer.Typer(short_help="工具")
 
 src = pathlib.Path(__file__).parent.parent
 
-DIRS = ["apps", "command", "common", "db", "fastpost", "static", "tests"]
+DIRS = ["apps", "command", "common", "db", "core", "static", "tests"]
 FILES = ["Dockerfile", "Makefile", ".dockerignore", ".gitignore", "gunicorn.conf.py", "manage.py", "pyproject.toml",
          "main.py"]
 
@@ -47,18 +47,16 @@ def copy_project(name: str = typer.Option(default=None, help="项目名称"),
             current_src_path = src_path.joinpath(need)
             src_path_finds = re.findall(".*?fastpost/(?P<appendix>.*)", str(current_src_path))
             src_appendix = src_path_finds[0] if src_path_finds else ""
-            if "fastpost" in src_appendix:
-                src_appendix = name + src_appendix.split("fastpost", 1)[1]
             dest_path = dest.joinpath(src_appendix)
 
             if current_src_path.is_file():
                 if is_sub or need in FILES:
-                    dest_file = dest_path.open(mode="w", encoding="utf-8")
-                    with open(current_src_path, mode="r") as src_file:
-                        for line in src_file:
-                            dest_file.write(line.replace("fastpost", name))
-
-                    dest_file.close()
+                    # dest_file = dest_path.open(mode="w", encoding="utf-8")
+                    # with open(current_src_path, mode="r") as src_file:
+                    #     for line in src_file:
+                    #         dest_file.write(line.replace("core", name))
+                    #
+                    # dest_file.close()
                     print("copied to ", dest_path, end="\n")
 
             elif current_src_path.is_dir():

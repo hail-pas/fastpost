@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from fastpost.factory import current_app
+from core.factory import current_app
 
 client = TestClient(current_app)
 

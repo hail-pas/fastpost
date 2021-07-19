@@ -1,10 +1,10 @@
 from fastapi import Depends, APIRouter
 
+from core.schema import Pager
+from core.globals import g
+from core.response import PageResp
 from db.mysql.models import Address
-from fastpost.schema import Pager
-from fastpost.globals import g
 from apps.dependencies import get_pager
-from fastpost.response import PageResp
 
 router = APIRouter()
 

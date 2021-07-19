@@ -1,4 +1,4 @@
-checkfiles = main.py manage.py tests/ fastpost/ common/ db/ apps/
+checkfiles = main.py manage.py tests/ core/ common/ db/ apps/
 black_opts = -l 120 -t py38
 py_warn = PYTHONDEVMODE=1
 flake8config = .flake8

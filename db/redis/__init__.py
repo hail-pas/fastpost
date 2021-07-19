@@ -1,7 +1,7 @@
 import redis as o_redis
 import aioredis
 
-from fastpost.settings import settings
+from core.settings import settings
 
 
 class AsyncRedisUtil:

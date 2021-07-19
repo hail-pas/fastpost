@@ -8,13 +8,13 @@ from tortoise.exceptions import IntegrityError
 from tortoise.query_utils import Q
 
 from common.utils import datetime_now
+from core.globals import g
+from core.response import Resp, SimpleSuccess
+from core.settings import settings
 from common.encrypt import Jwt
+from core.exceptions import NotFoundException, CommonFailedException
 from db.mysql.models import User
-from fastpost.globals import g
 from apps.dependencies import jwt_required
-from fastpost.response import Resp, SimpleSuccess
-from fastpost.settings import settings
-from fastpost.exceptions import NotFoundException, CommonFailedException
 
 router = APIRouter()
 

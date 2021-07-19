@@ -5,7 +5,7 @@ async def init_ctx_db():
     import importlib
     from tortoise import Tortoise
     from tortoise.transactions import get_connection
-    from fastpost.settings import settings
+    from core.settings import settings
     await Tortoise.init(config=settings.TORTOISE_ORM_CONFIG)
     main = importlib.import_module("__main__")
     ctx = main.__dict__
