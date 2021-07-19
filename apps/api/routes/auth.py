@@ -94,7 +94,7 @@ async def refresh_token():
     "/logout", summary="登出", description="退出登录接口", response_model=SimpleSuccess, dependencies=[Depends(jwt_required)]
 )
 async def logout():
-    return
+    return SimpleSuccess()
 
 
 class RegisterIn(BaseModel):
