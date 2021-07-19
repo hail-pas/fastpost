@@ -1,5 +1,5 @@
 import inspect
-from typing import List, Union, Tuple
+from typing import Tuple, Union
 
 from fastapi import Query, Depends, APIRouter
 from starlette.requests import Request
@@ -41,13 +41,21 @@ def get_enum_content(request: Request, enum_name: str = Query(None, description=
     return enum_content
 
 
-@router.get("/list", description="枚举-列表", summary="枚举表",
-            response_model=Resp[dict[str, List[Tuple[Union[int, str], Union[int, str]]]]])
+@router.get(
+    "/list",
+    description="枚举-列表",
+    summary="枚举表",
+    response_model=Resp[dict[str, Tuple[Tuple[Union[int, str], Union[int, str]], ...]]],
+)
 async def enum_content_list(enum_content=Depends(get_enum_content)):
     return Resp[dict](data=enum_content)
 
 
-@router.get("/json", description="枚举-JSON", summary="枚举表",
-            response_model=Resp[dict[str, dict[Union[int, str], Union[int, str]]]])
+@router.get(
+    "/json",
+    description="枚举-JSON",
+    summary="枚举表",
+    response_model=Resp[dict[str, dict[Union[int, str], Union[int, str]]]],
+)
 async def enum_content_json(enum_content=Depends(get_enum_content)):
     return Resp[dict](data=enum_content)
