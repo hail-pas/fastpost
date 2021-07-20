@@ -3,7 +3,7 @@ import sys
 import random
 import string
 import threading
-from typing import List, Sequence
+from typing import List, Union, Sequence
 from datetime import datetime
 from functools import wraps
 from email.message import EmailMessage
@@ -117,4 +117,109 @@ def partial(func, *args):
 
 # datetime util
 def datetime_now():
-    return now()
+    if os.environ.get("USE_TZ") == "True":
+        return datetime.now(tz=pytz.utc)
+    else:
+        return datetime.now(pytz.timezone(os.environ.get("TIMEZONE") or "UTC"))
+
+
+def timelimit(timeout: int):
+    """
+    A decorator to limit a function to `timeout` seconds, raising `TimeoutError`
+    if it takes longer.
+        >>> import time
+        >>> def meaningoflife():
+        ...     time.sleep(.2)
+        ...     return 42
+        >>>
+        >>> timelimit(.1)(meaningoflife)()
+        Traceback (most recent call last):
+            ...
+        RuntimeError: took too long
+        >>> timelimit(1)(meaningoflife)()
+        42
+    _Caveat:_ The function isn't stopped after `timeout` seconds but continues
+    executing in a separate thread. (There seems to be no way to kill a thread.)
+    inspired by <http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/473878>
+    """
+
+    def _1(function):
+        @wraps(function)
+        def _2(*args, **kw):
+            class Dispatch(threading.Thread):
+                def __init__(self):
+                    threading.Thread.__init__(self)
+                    self.result = None
+                    self.error = None
+
+                    self.setDaemon(True)
+                    self.start()
+
+                def run(self):
+                    try:
+                        self.result = function(*args, **kw)
+                    except Exception:
+                        self.error = sys.exc_info()
+
+            c = Dispatch()
+            c.join(timeout)
+            if c.is_alive():
+                raise RuntimeError("took too long")
+            if c.error:
+                raise c.error[1]
+            return c.result
+
+        return _2
+
+    return _1
+
+
+def commify(n: Union[int, float]):
+    """
+    Add commas to an integer `n`.
+        >>> commify(1)
+        '1'
+        >>> commify(123)
+        '123'
+        >>> commify(-123)
+        '-123'
+        >>> commify(1234)
+        '1,234'
+        >>> commify(1234567890)
+        '1,234,567,890'
+        >>> commify(123.0)
+        '123.0'
+        >>> commify(1234.5)
+        '1,234.5'
+        >>> commify(1234.56789)
+        '1,234.56789'
+        >>> commify(' %.2f ' % -1234.5)
+        '-1,234.50'
+        >>> commify(None)
+        >>>
+    """
+    if n is None:
+        return None
+
+    n = str(n).strip()
+
+    if n.startswith("-"):
+        prefix = "-"
+        n = n[1:].strip()
+    else:
+        prefix = ""
+
+    if "." in n:
+        dollars, cents = n.split(".")
+    else:
+        dollars, cents = n, None
+
+    r = []
+    for i, c in enumerate(str(dollars)[::-1]):
+        if i and (not (i % 3)):
+            r.insert(0, ",")
+        r.insert(0, c)
+    out = "".join(r)
+    if cents:
+        out += "." + cents
+    return prefix + out
