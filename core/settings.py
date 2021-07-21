@@ -1,4 +1,5 @@
 import os
+import logging
 import pathlib
 import multiprocessing
 from typing import Any, Dict, List, Optional
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Fastapi-start-kit with Postgre and sqlalchemy"
     ENVIRONMENT: str = "Development"  # Test、 Production
     DEBUG: bool = True
+    LOG_LEVEL: str = "DEBUG"
 
     # # ApiInfo
     # API_V1_ROUTE: str = "/api"
@@ -136,3 +138,9 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+logging.basicConfig(
+    level=settings.LOG_LEVEL,
+    format="[%(asctime)s] [%(process)s] [%(levelname)s] %(message)s [%(name)s:%(lineno)d]",
+    datefmt="%Y-%m-%d %H:%M:%S +0800",
+)

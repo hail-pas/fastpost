@@ -9,7 +9,7 @@ workers = settings.WORKERS
 worker_class = 'uvicorn.workers.UvicornWorker'
 
 # Gunicorn config variables
-loglevel = os.getenv("LOG_LEVEL", "info")
+loglevel = settings.LOG_LEVEL
 bind = f"{host}:{port}"
 errorlog = os.getenv("ERROR_LOG_DIR", "-")
 accesslog = os.getenv("ACCESS_LOG_DIR", "-")

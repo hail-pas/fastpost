@@ -8,3 +8,4 @@ RUN pip3 install poetry
 ENV POETRY_VIRTUALENVS_CREATE=false
 RUN poetry install
 COPY . /usr/share/nginx/fastpost
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "main:app"]
