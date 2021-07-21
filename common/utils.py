@@ -4,8 +4,11 @@ import random
 import string
 import threading
 from typing import List, Union, Sequence
+from asyncio import sleep
 from datetime import datetime
 from functools import wraps
+from contextlib import asynccontextmanager
+from collections import namedtuple
 from email.message import EmailMessage
 from email.mime.text import MIMEText
 
@@ -14,6 +17,7 @@ from pydantic import EmailStr
 from aiosmtplib import SMTP
 from starlette.requests import Request
 
+from db.redis import get_async_redis
 from core.settings import settings
 
 COMMON_TIME_STRING = "%Y-%m-%d %H:%M:%S"
@@ -223,3 +227,58 @@ def commify(n: Union[int, float]):
     if cents:
         out += "." + cents
     return prefix + out
+
+
+RedisLock = namedtuple("RedisLock", ["lock"])
+
+
+def make_redis_lock(get_redis):
+    redis = None
+
+    async def get_redis_():
+        nonlocal redis
+
+        if redis is None:
+            redis = await get_redis()
+
+        return redis
+
+    @asynccontextmanager
+    async def lock(key, timeout=60):
+        r = await get_redis_()
+        v = os.urandom(20)
+
+        accuired = False
+
+        while not accuired:
+            accuired = await r.set(key, v, expire=timeout, exist="SET_IF_NOT_EXIST")
+
+            if not accuired:
+                await sleep(1)
+
+        try:
+            yield
+        finally:
+            await r.eval(
+                """
+                if redis.call("get", KEYS[1]) == ARGV[1]
+                then
+                    return redis.call("del", KEYS[1])
+                else
+                    return 0
+                end
+            """,
+                [key],
+                [v],
+            )
+
+    _redis_lock = RedisLock(lock=lock,)
+
+    return _redis_lock
+
+
+redis_lock = make_redis_lock(get_async_redis)  # redis lock in async context
+"""
+async with redis_lock.lock(keys.RedisCacheKey.redis_lock.format("name")):
+    pass
+"""

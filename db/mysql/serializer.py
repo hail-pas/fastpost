@@ -329,6 +329,9 @@ def pydantic_model_creator(
                 properties[fname] = field_default
             pconfig.fields[fname] = fconfig
 
+    pannotations["updated_at"] = pannotations.pop("updated_at")
+    pannotations["created_at"] = pannotations.pop("created_at")
+
     # Here we endure that the name is unique, but complete objects are still labeled verbatim
     if not has_submodel:
         _name = name or f"{fqname}.leaf"
