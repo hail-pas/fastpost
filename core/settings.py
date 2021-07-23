@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Fastapi-start-kit with Postgre and sqlalchemy"
     ENVIRONMENT: str = "Development"  # Test、 Production
     DEBUG: bool = True
-    LOG_LEVEL: str = "DEBUG"
 
     # # ApiInfo
     # API_V1_ROUTE: str = "/api"

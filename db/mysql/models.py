@@ -14,8 +14,12 @@ class Config(BaseModel):
     # noinspection PyTypeChecker
     status = fields.IntEnumField(enums.GeneralStatus, description="状态", default=enums.GeneralStatus.on)
 
+    def status_display(self) -> str:
+        return self._meta.fields_map.get("status").enum_type.choices().get(self.status)
+
     class PydanticMeta:
         exclude = ("safe", "status")
+        computed = ("status_display",)
 
     class Meta:
         table_description = "在线参数配置"
@@ -37,6 +41,9 @@ class User(BaseModel):
     def __str__(self):
         return f"{self.username}-{self.phone}"
 
+    def status_display(self) -> str:
+        return self._meta.fields_map.get("status").enum_type.choices().get(self.status)
+
     def from_last_login_days(self) -> Optional[int]:
         """
         距上一次登录天数
@@ -51,7 +58,7 @@ class User(BaseModel):
         ordering = ["-id"]
 
     class PydanticMeta:
-        computed = ("from_last_login_days",)
+        computed = ("from_last_login_days", "status_display")
 
 
 class Address(BaseModel):

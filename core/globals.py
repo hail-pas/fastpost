@@ -4,6 +4,7 @@ from contextvars import Token, ContextVar
 from starlette.types import Send, Scope, ASGIApp, Receive
 
 from db.redis import AsyncRedisUtil
+from db.mysql.models import User
 
 
 class Globals:
@@ -31,6 +32,15 @@ class Globals:
             return self._vars["redis"].get()
         except LookupError:
             self._vars["redis"].set(None)
+            return None
+
+    @property
+    def user(self) -> Optional[User]:
+        self._ensure_var("user")
+        try:
+            return self._vars["user"].get()
+        except LookupError:
+            self._vars["user"].set(None)
             return None
 
     def reset(self) -> None:

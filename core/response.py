@@ -8,7 +8,7 @@ from pydantic.generics import GenericModel
 from starlette.responses import JSONResponse
 
 from core.schema import Pager
-from common.utils import COMMON_TIME_STRING
+from common.utils import datetime_now
 from core.resp_code import ResponseCodeEnum
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class AesResponse(JSONResponse):
 
     def render(self, content: typing.Any) -> bytes:
         # update responseTime
-        content["responseTime"] = datetime.now().strftime(COMMON_TIME_STRING)
+        content["responseTime"] = datetime_now().isoformat(sep="T")
         # if not get_settings().DEBUG:
         #     content = AESUtil(get_settings().AES_SECRET).encrypt_data(ujson.dumps(content))
         return super(AesResponse, self).render(content)

@@ -67,7 +67,11 @@ async def jwt_required(request: Request, token: HTTPAuthorizationCredentials = D
     except jwt.JWTError:
         raise TokenInvalidException()
     # 初始化全局用户信息，后续处理函数中直接使用
-    user = await User.get_or_none(id=user_id)
+    user = (
+        await User.get_or_none(id=user_id)
+        # .select_related(*User.get_select_related_fields())
+        # .prefetch_related(*User.get_prefetch_related_fields())
+    )
     if not user:
         raise TokenInvalidException()
     g.user = user

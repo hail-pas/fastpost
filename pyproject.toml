@@ -5,7 +5,7 @@ description = "Fastapi-start-kit with Postgre and sqlalchemy"
 authors = ["phoenix <hypofiasco@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 ipython = "7.24.1"
 fastapi = "0.66.0"
 aiomysql = "0.0.21"
