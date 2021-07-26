@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # ProjectInfo
     PROJECT_NAME: str = "FastPost"
     SERVER_URL: str = "http:127.0.0.1:8000"
-    DESCRIPTION: str = "Fastapi-start-kit with Postgre and sqlalchemy"
+    DESCRIPTION: str = "FastAPI-start-kit with MySQL and Tortoise-ORM"
     ENVIRONMENT: str = "Development"  # Test、 Production
     DEBUG: bool = True
 

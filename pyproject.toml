@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "fastpost"
 version = "0.1.0"
-description = "Fastapi-start-kit with Postgre and sqlalchemy"
+description = "FastAPI-start-kit with MySQL and Tortoise-ORM"
 authors = ["phoenix <hypofiasco@gmail.com>"]
 
 [tool.poetry.dependencies]
