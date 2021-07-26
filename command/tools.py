@@ -8,9 +8,8 @@ tool_typer = typer.Typer(short_help="工具")
 
 src = pathlib.Path(__file__).parent.parent
 
-DIRS = ["apps", "command", "common", "db", "core", "static", "tests"]
-FILES = ["Dockerfile", "Makefile", ".dockerignore", ".gitignore", "gunicorn.conf.py", "manage.py", "pyproject.toml",
-         "main.py"]
+DIRS = ["apps", "command", "common", "db", "core", "static", "tests", "deploy"]
+FILES = ["Dockerfile", "Makefile", ".dockerignore", ".gitignore", "manage.py", "pyproject.toml", "main.py"]
 
 
 @tool_typer.command("copy-project", short_help="复制脚手架项目并指明项目名称目标文件夹路径")

@@ -1,5 +1,4 @@
 import os
-import logging
 import pathlib
 import multiprocessing
 from typing import Any, Dict, List, Optional
@@ -137,9 +136,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-
-logging.basicConfig(
-    level=settings.LOG_LEVEL,
-    format="[%(asctime)s] [%(process)s] [%(levelname)s] %(message)s [%(name)s:%(lineno)d]",
-    datefmt="%Y-%m-%d %H:%M:%S +0800",
-)
