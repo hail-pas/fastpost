@@ -8,13 +8,13 @@ metadata:
   labels:
     app: backend
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: backend
   template:
     metadata:
-      namespace: backend-main
+      namespace: fastpost
       labels:
         app: backend
     spec:
@@ -22,26 +22,21 @@ spec:
       - name: registrykey
       containers:
       - name: backend-main
-        image: registry-vpc.cn-hangzhou.aliyuncs.com/catarc-tm/pro-web:latest
+        image: registry-vpc.cn-hangzhou.aliyuncs.com/fastpost/backend-main:latest
         env:
         - name: aliyun_logs_backend-main
           value: "stdout"
         resources:
           limits:
             memory: 1000Mi
-
 ---
-# -------------------- web service -------------#
 
+# -------------------- web service -------------#
 apiVersion: v1
 kind: Service
 metadata:
   namespace: fastpost
   name: backend-main
-  annotations:
-    service.beta.kubernetes.io/alicloud-loadbalancer-id: lb-bp133lklltqxsmwrmn7zo
-    service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
-    service.beta.kubernetes.io/alicloud-loadbalancer-protocol-port: "http:80"
 spec:
   selector:
     app: backend
@@ -50,5 +45,5 @@ spec:
     port: 80
     targetPort: 8000
     nodePort: 30101
-  type: LoadBalancer
+  type: NodePort
 ---
