@@ -34,6 +34,7 @@ passlib = "^1.7"
 email-validator = "^1.0.5"
 python-jose = { extras = ["cryptography"], version = "^3.1.0" }
 fabric3 = "1.14.post1"
+python-multipart = "0.0.5"
 
 [tool.poetry.dev-dependencies]
 taskipy = "1.8.1"
