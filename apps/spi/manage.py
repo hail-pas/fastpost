@@ -1,6 +1,9 @@
+import logging
 from typing import List
 
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 class WSConnectionManager:
@@ -10,9 +13,19 @@ class WSConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        logger.info(
+            '%s - "WebSocket %s" [accepted]',
+            websocket.scope["client"],
+            websocket.scope["root_path"] + websocket.scope["path"],
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
+        logger.info(
+            '%s - "WebSocket %s" [disconnected]',
+            websocket.scope["client"],
+            websocket.scope["root_path"] + websocket.scope["path"],
+        )
 
     async def send_private_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)

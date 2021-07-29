@@ -9,4 +9,4 @@ class FaultRecordData(BaseModel):
     receive_time = b"A:a05"
 
     class Meta:
-        table_name = "qiye6_fault_record"
+        table_name = "fault_record"
