@@ -7,8 +7,9 @@ from starlette.endpoints import WebSocketEndpoint
 from starlette.websockets import WebSocketDisconnect
 
 from apps.spi.manage import ws_manager
+from core.globals import g
 
-logger = logging.getLogger("websocket")
+logger = logging.getLogger(__name__)
 
 spi_app = FastAPI()
 
@@ -38,6 +39,8 @@ class WebSocketTicks(WebSocketEndpoint):
             websocket.scope["client"],
             websocket.scope["root_path"] + websocket.scope["path"],
         )
+        await g.redis.incrby("total_ws_conn")
+        logger.info(f"Current Total Conn: {int(await g.redis.get('total_ws_conn'))}")
 
     async def on_disconnect(self, websocket: WebSocket, close_code: int) -> None:
         self.ticker_task.cancel()
@@ -46,6 +49,7 @@ class WebSocketTicks(WebSocketEndpoint):
             websocket.scope["client"],
             websocket.scope["root_path"] + websocket.scope["path"],
         )
+        await g.redis.incrby("total_ws_conn", -1)
 
     async def on_receive(self, websocket: WebSocket, data: Any) -> None:
         await websocket.send_json({"Message: ": data})
@@ -53,7 +57,7 @@ class WebSocketTicks(WebSocketEndpoint):
     async def tick(self, websocket: WebSocket) -> None:
         counter = 0
         while True:
-            logger.info(counter)
+            # logger.info(counter)
             await websocket.send_json({"counter": counter})
             counter += 1
             await asyncio.sleep(1)
