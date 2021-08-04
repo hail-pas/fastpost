@@ -3,6 +3,7 @@ import subprocess
 from functools import partial
 
 import typer
+
 from core.settings import settings
 
 db_typer = typer.Typer(short_help="MySQL相关")
@@ -46,7 +47,12 @@ def db_make_migrations(message: str = typer.Option(default=None, help="迁移文
     proc = subprocess.Popen(shlex.split("aerich migrate --name {remark}".format(remark=message)),
                             stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
-    print(stdout.decode("utf-8") if stdout else "no change detected")
+    if stdout:
+        print(stdout.decode("utf-8"))
+    if stderr:
+        print(stderr.decode("utf-8"))
+    else:
+        print("No Change Detected")
 
 
 @db_typer.command("upgrade", short_help="执行迁移文件")
