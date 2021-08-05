@@ -51,8 +51,6 @@ def db_make_migrations(message: str = typer.Option(default=None, help="迁移文
         print(stdout.decode("utf-8"))
     if stderr:
         print(stderr.decode("utf-8"))
-    else:
-        print("No Change Detected")
 
 
 @db_typer.command("upgrade", short_help="执行迁移文件")
