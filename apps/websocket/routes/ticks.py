@@ -2,30 +2,12 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import FastAPI, WebSocket
+from fastapi import WebSocket
 from starlette.endpoints import WebSocketEndpoint
-from starlette.websockets import WebSocketDisconnect
 
-from apps.spi.manage import ws_manager
 from core.globals import g
 
 logger = logging.getLogger(__name__)
-
-spi_app = FastAPI()
-
-
-@spi_app.websocket("/example")
-async def func_websocket_route(websocket: WebSocket, client_id: int):
-    await ws_manager.connect(websocket)
-    try:
-        await ws_manager.send_privete_json({"msg": "Hello WebSocket"}, websocket)
-        while True:
-            data = await websocket.receive_text()
-            await ws_manager.send_private_message(f"You wrote: {data}", websocket)
-            await ws_manager.broadcast(f"Client #{client_id} says: {data}")
-    except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
-        await ws_manager.broadcast(f"Client #{client_id} left the chat")
 
 
 class WebSocketTicks(WebSocketEndpoint):
@@ -61,6 +43,3 @@ class WebSocketTicks(WebSocketEndpoint):
             await websocket.send_json({"counter": counter})
             counter += 1
             await asyncio.sleep(1)
-
-
-spi_app.add_websocket_route("/example2", WebSocketTicks, "Tick")

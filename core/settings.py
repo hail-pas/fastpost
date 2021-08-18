@@ -37,9 +37,9 @@ class Settings(BaseSettings):
     # ========MySQL
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
-    DB_USER: str
-    DB_NAME: str
-    DB_PASSWORD: str
+    DB_USER: str = ""
+    DB_NAME: str = ""
+    DB_PASSWORD: str = ""
 
     # =========Redis
     REDIS_HOST: str = "127.0.0.1"
@@ -64,10 +64,10 @@ class Settings(BaseSettings):
     STATIC_DIR: str = f"{ROOT}/static"
 
     # JWT
-    JWT_SECRET: str
+    JWT_SECRET: str = ""
     JWT_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     AES_SECRET: Optional[str]
-    SIGN_SECRET: str
+    SIGN_SECRET: str = ""
 
     # logging
     LOGGING_CONFIG: Dict = None
